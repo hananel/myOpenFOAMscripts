@@ -21,7 +21,7 @@ AR = float(sys.argv[7])
 
 if sampleFile:
 	writeSampleDict = 1 # write a sample file for acceleration h meters above hill shape
-
+	
 def main(file,H,L,sampleFile,h,hillName,AR):
 	if (hillName == "RUSHIL"):
 		H = 0.117 #float(sys.argv[2]) # [m]
@@ -30,7 +30,7 @@ def main(file,H,L,sampleFile,h,hillName,AR):
 		m = n + sqrt( n**2 + 1 )
 		a = H/n # [m] hill half length
 		zeta = linspace(-a,a,101)
-		X = 0.5 * zeta 				* ( 1 + a**2 / ( zeta**2 + m**2 * ( a**2 - zeta**2 ) ) )
+		X = 0.5 * zeta 	* ( 1 + a**2 / ( zeta**2 + m**2 * ( a**2 - zeta**2 ) ) )
 		Y = 0.5 * m * sqrt( a**2 - zeta**2 ) 	* ( 1 - a**2 / ( zeta**2 + m**2 * ( a**2 - zeta**2 ) ) )
 		X = insert(X,0,-L); X = append(X,L)
 		Y = insert(Y,0,0); Y = append(Y,0)

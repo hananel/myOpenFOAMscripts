@@ -38,14 +38,17 @@ from pylab import *
 import matplotlib.pyplot as plt
 import os,glob,subprocess
 from matplotlib.backends.backend_pdf import PdfPages
+import pdb
+b = pdb.set_trace
 
-def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, us, yM, h, caseType):
+def run3dHillBase(template0, AR, z0, us, yM, h, caseType):
 
 	# case definitions Martinez2DBump
 	ks = 19.58 * z0 # [m] Martinez 2011
 	k = 0.4
 	Cmu = 0.03 	# Castro 96
-	Htop = Href = H	# [m]
+	#TODO read this from case blockMeshDict or actual mesh?
+	Href = 4000
 
 	# yp/ks = 0.02 = x/ks
 	funky = 0
@@ -55,9 +58,10 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 		# from the inner refined cell and the outer less refined cells of the blockMesh Mesh
 	procnr = 8
 
-	caseStr = "_AR_" + str(AR) + "_z0_" + str(z0)
-	if caseType=="Crude": caseStr = caseStr + "Crude"
-  	target = target0+caseStr
+	caseStr = "_z0_" + str(z0)
+  	
+  	target = "runs/" + template0 + caseStr
+
 	orig = SolutionDirectory(template0,
 			  archive=None,
 			  paraviewLink=False)
@@ -65,43 +69,7 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 	# cloaning case
 	#--------------------------------------------------------------------------------------
 	work = orig.cloneCase(target)
-
-	#--------------------------------------------------------------------------------------
-	# creating mesh
-	#--------------------------------------------------------------------------------------
-	y0 =  2 * x * z0 # setting first cell according to Martinez 2011 p. 25
-	ny = int(round(math.log(H/y0*(r-1)+1)/math.log(r)))    # number of cells in the y direction of the hill block
-	Ry  = r**(ny-1.)
-	nx = int(L/x0-1)
-	rx = max(r,1.1)
-	ns = int(round(math.log((Ls-L)/x0*(rx-1)/rx**fac+1)/math.log(rx)))    # number of cells in the x direction of the hill block
-	Rx = rx**(ns-1)
-	# changing blockMeshDict - from template file
-	if AR==1000: # if flat terrain
-		bmName = path.join(work.constantDir(),"polyMesh/blockMeshDict")
-		template = TemplateFile(bmName+"_flat_3cell.template")
-	else:
-		bmName = path.join(work.constantDir(),"polyMesh/blockMeshDict")
-		template = TemplateFile(bmName+"_3cell.template")
-	template.writeToFile(bmName,{'H':H,'ny':ny,'Ry':Ry,'nx':nx,'L':L,'L1':L1,'Ls':Ls,'Rx':Rx,'Rx_one_over':1/Rx,'ns':ns})
-	# writing ground shape (hill, or whatever you want - equation in function writeGroundShape.py)
-	# sample file is changed as well - for sampling h=10 meters above ground
-	import write2dShape
-	sampleName = path.join(work.systemDir(),"sampleDict.template")
-	write2dShape.main(bmName,H,L,sampleName,hSample,hillName,AR)
-	# changing Y line limits
-	bmName = path.join(work.systemDir(),"sampleDict")
-	template = TemplateFile(bmName + ".template")
-	if AR==1000: # if flat terrain
-		template.writeToFile(bmName,{'hillTopY':0,'maxY':yM*2.5})
-	else:
-		template.writeToFile(bmName,{'hillTopY':h,'maxY':yM*2.5+h})
-
-	# running blockMesh
-	blockRun = BasicRunner(argv=["blockMesh",'-case',work.name],silent=True,server=False,logname="blockMesh")
-	blockRun.start()
-	if not blockRun.runOK(): error("there was an error with blockMesh")
-
+				  
 	#--------------------------------------------------------------------------------------
 	# changing inlet profile - - - - according to Martinez 2010
 	#--------------------------------------------------------------------------------------
@@ -122,7 +90,7 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 		# 3: changing U (inserting variables into groovyBC for inlet profile)
 		bmName = path.join(work.initialDir(),"U")
 		template = TemplateFile(bmName + ".template")
- 		template.writeToFile(bmName,{'us':us,'z0':z0,'K':k,'Utop':Utop})
+	 	template.writeToFile(bmName,{'us':us,'z0':z0,'K':k,'Utop':Utop})
 		# 4: changing k (inserting variables into groovyBC for inlet profile)
 		bmName = path.join(work.initialDir(),"k")
 		template = TemplateFile(bmName + ".template")
@@ -138,13 +106,14 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 	nutFile["boundaryField"]["ground"]["Ks"].setUniform(ks)
 	nutFile.writeFile()
 	
-	# 7: changing convergence criterion for Crude runs
-	if caseType == "Crude":	
-		fvSolutionFile = ParsedParameterFile(path.join(work.systemDir(),"fvSolution"))
-		fvSolutionFile["SIMPLE"]["residualControl"]["p"] = 1e-6
-		fvSolutionFile["SIMPLE"]["residualControl"]["U"] = 1e-6
-		fvSolutionFile.writeFile()
- 	
+	#--------------------------------------------------------------------------------------
+	# changing sample file
+	#--------------------------------------------------------------------------------------
+	# 2: changing initialConditions
+	bmName = path.join(work.systemDir(),"sampleDict")
+	template = TemplateFile(bmName+".template")
+	template.writeToFile(bmName,{'hillTopY':h,'sampleHeightAbovePlain':50,'sampleHeightAboveHill':h+50,'inletX':h*AR*5*0.9}) 
+	
 	# mapping fields - From earlier result if exists
 	if caseType == "mapFields":
 		#finding the most converged run. assuming the "crude" run had the same dirName with "Crude" attached
@@ -158,11 +127,10 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 		mapRun.start()
 		
 	# parallel rule
-	cells = nx * (ny+2*ns)
-	print "Mesh has " + str(cells) + " cells"
-	if cells>40000: parallel=1
-	else: parallel=0
-
+	#print "Mesh has " + str(cells) + " cells"
+	#if cells>100000: parallel=1
+	#else: parallel=0
+	parallel = 1
 	if parallel:
 		#--------------------------------------------------------------------------------------
 		# decomposing
@@ -179,7 +147,7 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 		#--------------------------------------------------------------------------------------
 		machine = LAMMachine(nr=procnr)
 		# run case
-		PlotRunner(args=["--proc=%d"%procnr,"--progress","simpleFoam","-case",work.name])
+		PlotRunner(args=["--proc=%d"%procnr,"--progress","--no-continuity","--hardcopy", "--non-persist", "simpleFoam","-case",work.name])
 
 		#--------------------------------------------------------------------------------------
 		# reconstruct

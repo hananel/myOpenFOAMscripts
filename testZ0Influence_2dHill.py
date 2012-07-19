@@ -55,8 +55,10 @@ n = len(sys.argv)
 if n<6:
   print "Need	<TEMPLATE> 		\n\
 		<TARGET>  		\n\
-		<>			\n\
-		<>"
+		<xM>			\n\
+		<yM>			\n\
+		<UM>			\n\
+		<z0>"
   sys.exit(-1)
 
 template0 	= sys.argv[1]
@@ -77,7 +79,7 @@ x0       = 20
 # case definitions MartinezBump2D
 hillName = "MartinezBump2D"
 ks = 19.58 * z0 # [m] Martinez 2011
-h = 60    	# hill height
+h = 200    	# hill height
 us = 0.5315	# [m/s] 
 k = 0.4
 Cmu = 0.03 	# Castro 96
