@@ -102,7 +102,7 @@ U43y = U2y = U43y_plus = U2y_plus = U43y_minus = U2y_minus = ARvec = zeros(lenAR
 logger.info(dirNameList)
 subprocess.call("mkdir -p runs",shell=True)
 for counter, dirName in enumerate(dirNameList):
-	target0 = dirName
+	template0 = dirName
 	
 	# finding AR from dirname
 	AR = float(dirName[dirName.rfind("AR_")+3:])
@@ -212,7 +212,7 @@ for counter, dirName in enumerate(dirNameList):
 	us = UM*k/math.log(yM/z0)
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
-		y_minus,Ux_y_minus,Uy_y_minus = run3dHillBase(target0, AR, z0, us, caseType)
+		y_minus,Ux_y_minus,Uy_y_minus = run3dHillBase(template0, AR, z0, us, caseType)
 		# checking convergence
 		UxSimulation = interp(yM,y_minus,Ux_y_minus)
 		err = (UM-UxSimulation)/UM

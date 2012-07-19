@@ -117,8 +117,8 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 		y3 = y0 + (l/2*cos(phi) - d/2*sin(phi))
 		x4 = x0 + (l/2*sin(phi) - d/2*cos(phi))
 		y4 = y0 + (l/2*cos(phi) + d/2*sin(phi))
-		n = floor(d/cell)
-		m = floor(l/cell)
+		n = floor(d/(cell*inputDict["SHMParams"]["cellSize"]["cellYfactor"]))
+		m = floor(l/(cell*inputDict["SHMParams"]["cellSize"]["cellYfactor"]))
 		q = floor((Href+450)/cell) # -450 is the minimum of the blockMeshDict.template - since that is slightly lower then the lowest point on the planet
 
 		bmName = path.join(work.constantDir(),"polyMesh/blockMeshDict")
@@ -174,6 +174,7 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 							'refBox2_maxx':refBox2_maxx,'refBox2_maxy':refBox2_maxy,'refBox2_maxz':refBox2_maxz,
 							'locInMesh_x':x0,'locInMesh_y':y0,'locInMesh_z':zz})
 		"""
+		# TODO - add parallel runs!
 		SHMrun = BasicRunner(argv=["snappyHexMesh",'-overwrite','-case',work.name],server=False,logname="SHM")
 		print "Running SHM"
 		SHMrun.start()
