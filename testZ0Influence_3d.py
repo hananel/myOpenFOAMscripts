@@ -14,14 +14,16 @@
 # 5. repeating steps 1-4 for different directories and delta z0 and producing a "contour map") 
 #
 # example call to function:
-# testZ0Influence_3d.py template h xM yM UM z0
-# testZ0Influence_3d.py Martinez3D 200 0 20 5 0.03
+# testZ0Influence_3d.py template h xM yM UM z0 cell
+# testZ0Influence_3d.py Martinez3D 200 0 20 5 0.03 100
 
 # where
+# h  - height of hill
 # xM - x location of measurement
 # yM - y location of measurement
 # UM - velocity at xM,yM
 # z0 - roughness length (same for entire area)
+# cell - length of initial blockMesh cell
 
 import sys, math, os, shutil, subprocess
 from os import path
@@ -53,24 +55,28 @@ subprocess.call("clear",shell=True)
 # TODO learn the try thingy - here it would help
 n = len(sys.argv)
 
-if n<6:
-  print "Need <template> <h> <xM> <yM> <UM> <z0>\n"
+if n<1:
+  print "Need <template> \n" #<h> <xM> <yM> <UM> <z0> <cell>\n"
   sys.exit(-1)
 
 template= sys.argv[1]
-h		= float(sys.argv[2])
-xM 		= float(sys.argv[3])
-yM 		= float(sys.argv[4])
-UM 		= float(sys.argv[5])
-z0 		= float(Davenport(float(sys.argv[6]),0))
+template0 = template
 
-# TODO dummy parameters for now - C stands for "Crude" parameters
-hillName = "MartinezBump3D"
-# TODO red this from file name
+# reading input dictionary - always named as below and resides in the current directory
+inputDict = ParsedParameterFile("testZ0InfluenceDict")
+h		= inputDict["simParams"]["h"]
+xM 		= inputDict["simParams"]["xM"]
+yM 		= inputDict["simParams"]["yM"]
+UM 		= inputDict["simParams"]["UM"]
+z0 		= Davenport(inputDict["simParams"]["z0"],0)
+cell	= inputDict["SHMParams"]["cellSize"]["cell"] 
+
+# TODO read this from file name
 # h 	 =
+k 	 = inputDict["kEpsParams"]["k"]	# von Karman constant
 
-k 	 = 0.4	# von Karman constant
 epsilon  = 0.001
+caseType = inputDict["simParams"]["caseType"]
 
 # logging
 import logging
@@ -117,7 +123,7 @@ for counter, dirName in enumerate(dirNameList):
 	logger.info("z0 = " + str(z0))
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
-		y,Ux_y,Uy_y = run3dHillBase(target0, AR, z0, us, yM, h,"Crude")
+		y,Ux_y,Uy_y = run3dHillBase(template0, AR, z0, us,caseType)
 		# checking convergence
 		UxSimulation = interp(yM,y,Ux_y)
 		err = (UM-UxSimulation)/UM
@@ -165,7 +171,7 @@ for counter, dirName in enumerate(dirNameList):
 
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
-		y_plus,Ux_y_plus,Uy_y_plus = run3dHillBase(target0, AR, z0, us, yM, h, "Crude")
+		y_plus,Ux_y_plus,Uy_y_plus = run3dHillBase(template0, AR, z0, us, caseType)
 		# checking convergence
 		UxSimulation = interp(yM,y_plus,Ux_y_plus)
 		err = (UM-UxSimulation)/UM
@@ -206,7 +212,7 @@ for counter, dirName in enumerate(dirNameList):
 	us = UM*k/math.log(yM/z0)
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
-		y_minus,Ux_y_minus,Uy_y_minus = run3dHillBase(target0, AR, z0, us, yM, h, "Crude")
+		y_minus,Ux_y_minus,Uy_y_minus = run3dHillBase(target0, AR, z0, us, caseType)
 		# checking convergence
 		UxSimulation = interp(yM,y_minus,Ux_y_minus)
 		err = (UM-UxSimulation)/UM
