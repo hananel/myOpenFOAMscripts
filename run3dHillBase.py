@@ -104,8 +104,7 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 	
 	# if SHM - create mesh
 	if caseType=="SHM":
-	
-		#--------------------------------------------------------------------------------------
+		phi = phi - pi/180 * 90	#--------------------------------------------------------------------------------------
 		# creating blockMeshDict
 		#--------------------------------------------------------------------------------------
 		l, d = a*inputDict["SHMParams"]["domainSize"]["fX"], a*inputDict["SHMParams"]["domainSize"]["fY"]
@@ -139,10 +138,10 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 		print "calculating SHM parameters"
 		# calculating refinement box positions
 		l1, l2, h1, h2 = 2*a, 1.3*a, 4*H, 2*H # refinement rulls - Martinez 2011
-		refBox1_minx, refBox1_miny, refBox1_minz = x0 + l1*(sin(phi)+cos(phi)), y0 - l1*(cos(phi)-sin(phi)), 0 #enlarging to take acount of the rotation angle
-		refBox1_maxx, refBox1_maxy, refBox1_maxz = x0 - l1*(sin(phi)+cos(phi)), y0 + l1*(cos(phi)-sin(phi)), h1 #enlarging to take acount of the rotation angle
-		refBox2_minx, refBox2_miny, refBox2_minz = x0 + l2*(sin(phi)+cos(phi)), y0 - l2*(cos(phi)-sin(phi)), 0 #enlarging to take acount of the rotation angle
-		refBox2_maxx, refBox2_maxy, refBox2_maxz = x0 - l2*(sin(phi)+cos(phi)), y0 + l2*(cos(phi)-sin(phi)),h2 #enlarging to take acount of the rotation angle
+		refBox1_minx, refBox1_miny, refBox1_minz = x0 - l1*(sin(phi)+cos(phi)), y0 - l1*(cos(phi)-sin(phi)), 0 #enlarging to take acount of the rotation angle
+		refBox1_maxx, refBox1_maxy, refBox1_maxz = x0 + l1*(sin(phi)+cos(phi)), y0 + l1*(cos(phi)-sin(phi)), h1 #enlarging to take acount of the rotation angle
+		refBox2_minx, refBox2_miny, refBox2_minz = x0 - l2*(sin(phi)+cos(phi)), y0 - l2*(cos(phi)-sin(phi)), 0 #enlarging to take acount of the rotation angle
+		refBox2_maxx, refBox2_maxy, refBox2_maxz = x0 + l2*(sin(phi)+cos(phi)), y0 + l2*(cos(phi)-sin(phi)),h2 #enlarging to take acount of the rotation angle
 		
 		# changing cnappyHexMeshDict - with parsedParameterFile
 		SHMDict = ParsedParameterFile(path.join(work.systemDir(),"snappyHexMeshDict"))
@@ -153,16 +152,15 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 		SHMDict["castellatedMeshControls"]["locationInMesh"] = "("+str(x0)+" "+str(y0)+" "+str(zz)+")"
 		levelRef = inputDict["SHMParams"]["cellSize"]["levelRef"]
 		SHMDict["castellatedMeshControls"]["refinementSurfaces"]["terrain"]["level"] = "("+str(levelRef)+" "+str(levelRef)+")"
-		L = inputDict["SHMParams"]["cellSize"]["layers"]
-		SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = L
 		r = inputDict["SHMParams"]["cellSize"]["r"]
 		SHMDict["addLayersControls"]["expansionRatio"] = r
+		fLayerRatio = inputDict["SHMParams"]["cellSize"]["fLayerRatio"]
+		SHMDict["addLayersControls"]["finalLayerThickness"] = fLayerRatio
 		# calculating finalLayerRatio for getting 
 		zp_z0 = inputDict["SHMParams"]["cellSize"]["zp_z0"]
 		firstLayerSize = 2*zp_z0*z0
-		fLayerRatio = firstLayerSize*r**(L-1)*2**levelRef / cell
-	
-		SHMDict["addLayersControls"]["finalLayerThickness"] = fLayerRatio
+		L = math.log(fLayerRatio/firstLayerSize*cell/2**levelRef)/math.log(r)+1
+		SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
 		SHMDict.writeFile()
 		"""
 		# changing snappyHexMeshDict - with template file

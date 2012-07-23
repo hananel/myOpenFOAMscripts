@@ -3,7 +3,7 @@ from numpy import *
 import scipy.special as sp
 #from numeric import *
 
-AR = 1
+AR = 8
 N = 500
 A = 3.1926
 H = 200  # [m]
@@ -11,7 +11,7 @@ a = H*AR # [m]
 x = linspace(0,a,N)	# [m]	
 y = - H * 1/6.04844 * ( sp.j0(A)*sp.i0(A*x/a) - sp.i0(A)*sp.j0(A*x/a) )
 nPts = len(x)
-x = append(x,max(a*20,3600))
+x = append(x,max(a*200,3600))
 y = append(y,0)
 nPts = nPts + 1
 
