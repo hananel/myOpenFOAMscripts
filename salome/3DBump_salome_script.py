@@ -3,7 +3,7 @@ from numpy import *
 import scipy.special as sp
 #from numeric import *
 
-AR = 8
+AR = 16
 N = 500
 A = 3.1926
 H = 200  # [m]
