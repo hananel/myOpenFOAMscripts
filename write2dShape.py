@@ -36,7 +36,7 @@ def main(file,H,L,sampleFile,h,hillName,AR):
 		Y = insert(Y,0,0); Y = append(Y,0)
 	elif (hillName == "MartinezBump2D"):
 		A = 3.1926
-		H = 60 		# [m]	
+		H = 200 		# [m]	
 		a = H*AR 	# [m]
 		X0 = X = linspace(-a,a,101)	# [m]	
 		Y0 = Y = - H * 1/6.04844 * ( sp.j0(A)*sp.i0(A*X/a) - sp.i0(A)*sp.j0(A*X/a) )

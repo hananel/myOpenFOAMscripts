@@ -46,6 +46,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from Davenport import Davenport
 from run3dHillBase import run3dHillBase
 from hilite import hilite
+from interpf import interpf
 import pdb
 b = pdb.set_trace
 
@@ -70,13 +71,18 @@ yM 		= inputDict["simParams"]["yM"]
 UM 		= inputDict["simParams"]["UM"]
 z0 		= Davenport(inputDict["simParams"]["z0"],0)
 cell	= inputDict["SHMParams"]["cellSize"]["cell"] 
-
-# TODO read this from file name
-# h 	 =
 k 	 = inputDict["kEpsParams"]["k"]	# von Karman constant
-
 epsilon  = 0.001
 caseType = inputDict["simParams"]["caseType"]
+
+# making interpolation class for fac data (accelaration over hill top)
+from scipy import interpolate
+ARVec = [1,2,3,5,8,16,1000]
+z0Vec = [0.005,0.03,0.1]
+ARMesh, z0Mesh = meshgrid(ARVec, z0Vec)
+facMat = inputDict["facMat"]
+# this crashes! f = interpolate.interp2d(ARVec, z0Vec, facMat, kind='cubic')
+# doing interpolation 1D with ifs at the actual location of use, in the loop below
 
 # logging
 import logging
@@ -98,7 +104,7 @@ dirNameList.sort()
 
 # outer loop - over directories
 lenAR = len(dirNameList)
-U43y = U2y = U43y_plus = U2y_plus = U43y_minus = U2y_minus = ARvec = zeros(lenAR,float)
+U43y, U2y, U43y_plus, U2y_plus, U43y_minus, U2y_minus, ARvec = zeros(lenAR,float), zeros(lenAR,float), zeros(lenAR,float), zeros(lenAR,float), zeros(lenAR,float), zeros(lenAR,float), zeros(lenAR,float)
 logger.info(dirNameList)
 subprocess.call("mkdir -p runs",shell=True)
 for counter, dirName in enumerate(dirNameList):
@@ -117,9 +123,9 @@ for counter, dirName in enumerate(dirNameList):
 
 	# looping over us until convergence with measurements - using Crude mesh
 	notConverged = 1
-	# initial guess - according to flat terrain
-	fac = 1 # /math.log(AR) # should be an intelegent function of hill AR
-	us = UM*k/math.log(yM/z0)*fac
+	# initial guess - according to flat terrain with fac correction (from previous simulations)
+	fac = interpf(facMat,ARVec,z0Vec,AR,z0)
+	us = UM*k/math.log(yM/z0)/fac
 	logger.info("z0 = " + str(z0))
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
@@ -157,7 +163,7 @@ for counter, dirName in enumerate(dirNameList):
 	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 	# # # # # # # # # # # # # #  		4a	 	# # # # # # # # # # # # # # # #
 	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
+	#caseType = "mapFields"
 	# running at z0 one scale higher in the Davenport scale
 	z0Orig = z0
 	z0 = Davenport(z0Orig,1)
@@ -167,7 +173,8 @@ for counter, dirName in enumerate(dirNameList):
 	# looping over us until convergence with measurements 
 	notConverged = 1
 	# initial guess - according to flat terrain
-	us = UM*k/math.log(yM/z0)
+	fac = interpf(facMat,ARVec,z0Vec,AR,z0)
+	us = UM*k/math.log(yM/z0)/fac
 
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
@@ -182,7 +189,7 @@ for counter, dirName in enumerate(dirNameList):
 		us = us/(1-err)
 		logger.info("us = " +  str((100*us//1)*0.01))
 		logger.info("blind correction")
-		Ux_y, Uy_y = Ux_y/(1-err), Uy_y/(1-err)
+		Ux_y_plus, Uy_y_plus = Ux_y_plus/(1-err), Uy_y_plus/(1-err)
 		notConverged = 0
 		
 	# saving results in matrix
@@ -209,7 +216,8 @@ for counter, dirName in enumerate(dirNameList):
 	notConverged = 1
 	iteration = 1
 	# initial guess - according to flat terrain
-	us = UM*k/math.log(yM/z0)
+	fac = interpf(facMat,ARVec,z0Vec,AR,z0)
+	us = UM*k/math.log(yM/z0)/fac
 	logger.info("us = " + str((100*us//1)*0.01))
 	while notConverged:
 		y_minus,Ux_y_minus,Uy_y_minus = run3dHillBase(template0, AR, z0, us, caseType)
@@ -223,7 +231,7 @@ for counter, dirName in enumerate(dirNameList):
 		us = us/(1-err)
 		logger.info("us = " +  str((100*us//1)*0.01))
 		logger.info("blind correction")
-		Ux_y, Uy_y = Ux_y/(1-err), Uy_y/(1-err)
+		Ux_y_minus, Uy_y_minus = Ux_y_minus/(1-err), Uy_y_minus/(1-err)
 		notConverged = 0
 	
 	# saving results in matrix
@@ -264,7 +272,6 @@ resultMat[:,3] = err2_minus = (U2y_minus-U2y)/U2y
 savetxt('resultMat.csv',resultMat,delimiter=',')
 
 from plotZ0Influence import main as plotResults
-b()
 plotResults("runs/Martinez", yM, UM, 0)
 
 '''

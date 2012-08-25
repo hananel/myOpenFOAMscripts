@@ -100,10 +100,14 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 	# 2: changing initialConditions
 	bmName = path.join(work.systemDir(),"sampleDict")
 	template = TemplateFile(bmName+".template")
-	template.writeToFile(bmName,{'hillTopY':h,'sampleHeightAbovePlain':50,'sampleHeightAboveHill':h+50,'inletX':h*AR*5*0.9}) 
+	if AR>100:# flat terrain
+		h=0
+		template.writeToFile(bmName,{'hillTopY':0,'sampleHeightAbovePlain':50,'sampleHeightAboveHill':50,'inletX':3500})
+	else:
+		template.writeToFile(bmName,{'hillTopY':h,'sampleHeightAbovePlain':50,'sampleHeightAboveHill':h+50,'inletX':h*AR*4*0.9}) 
 	
 	# if SHM - create mesh
-	if caseType=="SHM":
+	if caseType.find("SHM")>0:
 		phi = phi - pi/180 * 90	#--------------------------------------------------------------------------------------
 		# creating blockMeshDict
 		#--------------------------------------------------------------------------------------
@@ -179,8 +183,8 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 	
 	
 	# mapping fields - From earlier result if exists
-	if caseType == "mapFields":
-		#finding the most converged run. assuming the "crude" run had the same dirName with "Crude" attached
+	if caseType.find("mapFields")>0: #TODO - fix mapping issue. mucho importante!
+		#copying results from other z0 converged runs
   		setName =  glob.glob(target + 'Crude/sets/*')
   		lastRun = range(len(setName))
 		for num in range(len(setName)):
@@ -242,7 +246,10 @@ def run3dHillBase(template0, AR, z0, us, caseType):
   	p = lastRun.index(m)
 	data_y = genfromtxt(setName[p] + '/line_y_U.xy',delimiter=' ')
   	y, Ux_y, Uy_y  = data_y[:,0], data_y[:,1], data_y[:,2] 
-	if AR<1000: 	# if terrain isn't flat
+	if AR<100: 	# if terrain isn't flat
+		#TODO find the height of the hill - the exact one! because of truncation errors etc - 
+		#just follow the line measurements and look for the first place above 0
+		h = min(data_y[:,0])
 		y = y-h # normalizing data to height of hill-top above ground
 
 	return y,Ux_y,Uy_y

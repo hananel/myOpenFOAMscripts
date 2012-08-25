@@ -6,6 +6,7 @@ from os import path
 from numpy import *
 from pylab import *
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import os,glob,subprocess
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib import rc
@@ -13,11 +14,14 @@ from Davenport import Davenport
 import pdb
 b = pdb.set_trace
 
-def main(target, yM, UM, flatFlag):
+def main(target, yM, UM, flatFlag, show):
 	colorVec = ['r','k','b']
-	
+	line1 = [0,0,0]
  	dirNameList = [x for x in glob.glob(target+'*') if not x.endswith('Crude')]
-
+	pdf = PdfPages('results_ym_' + str(yM) + '_Um_' + str(UM) + '.pdf')
+	d = pdf.infodict()
+	d['ModDate'] = datetime.datetime.today()
+	
  	# defining output parameters
 	lenList = len(dirNameList)
 	AR = zeros(lenList,int)
@@ -44,7 +48,7 @@ def main(target, yM, UM, flatFlag):
 	import numpy as np
 
 	NUM_COLORS=len(ARvec)
-	cm = plt.get_cmap('gist_rainbow')
+	cm = plt.get_cmap('jet')
 	cNorm  = colors.Normalize(vmin=0, vmax=NUM_COLORS-1)
 	scalarMap = mplcm.ScalarMappable(norm=cNorm, cmap=cm)
 
@@ -90,7 +94,6 @@ def main(target, yM, UM, flatFlag):
   		data_y = genfromtxt(setName[p] + '/line_y_U.xy',delimiter=' ')
   		y, Ux_y, Uy_y  = data_y[:,0], data_y[:,1], data_y[:,2]
 		y = y-h[i] # normalizing data to height of hill-top above ground
-		
 		# applying linear factor to dictate Um at yM
 		Ux_yM = interp(yM,y,Ux_y)
 		
@@ -110,9 +113,9 @@ def main(target, yM, UM, flatFlag):
 		S = (Ux_y - Ux_inlet_interp)/Ux_inlet_interp
 		
 		# plotting Uy
-		fig1 = figure(1)
-		plt.subplot(3,1+len(ARvec)//3,1+i//3)
-		plt.plot(Ux_y,y,color = colorVec[i%3])
+		fig1 = plt.figure(1)
+		ax1 = fig1.add_subplot(3,1+len(ARvec)//3,1+i//3)
+		ax1.plot(Ux_y,y,color = colorVec[i%3])
 		plt.grid(which='major')
 		plt.grid(which='minor')
 		plt.hold(True)
@@ -124,13 +127,15 @@ def main(target, yM, UM, flatFlag):
 			plt.ylabel('y [m]')
 		if i>(len(ARvec)-2):
 			plt.xlabel('Uy [m/s]')
-		
+		plt.tight_layout()
+		xticks = linspace(0,round(UM*1.2),round(UM*1.2)+1)
+		plt.xticks(xticks)
 		fig1.set_facecolor('w') 
 		
 		# plotting S_y on top of hill
-		fig2 = figure(2)
-		plt.subplot(3,1+len(ARvec)//3,1+i//3)
-		plt.plot(S,y,color = colorVec[i%3])
+		fig2 = plt.figure(2)
+		ax2 = plt.subplot(3,1+len(ARvec)//3,1+i//3)
+		ax2.plot(S,y,color = colorVec[i%3])
 		plt.grid(which='major')
 		plt.grid(which='minor')
 		plt.hold(True)
@@ -140,12 +145,15 @@ def main(target, yM, UM, flatFlag):
 			plt.title('AR ' + str(ARcurrent))
 		if i%3==0:
 			plt.ylabel('y [m]')
-		if i>(len(ARvec)-2):
+		if i>(len(ARvec)-1):
 			plt.xlabel('S')
+		plt.axis([0,1,max(min(y),0),max(y)])
+		xticksS = [0,0.25,0.5,0.75,1]
+		plt.xticks(xticksS)
+		fig2.set_facecolor('w')
 		
 		# saving data - assuming sorted!
 		# mat43 or mat2 contain rows of : [minus, orig, plus] for each AR
-
 		Umat43[i//3,i%3] 		= interp(yM*4/3,y,Ux_y)
 		Umat2[i//3,i%3] 		= interp(yM*2,y,Ux_y)
 		if i==0:
@@ -154,31 +162,70 @@ def main(target, yM, UM, flatFlag):
 	
 
 	# adding legend
-	legend([str(z0Vec[0]),str(z0Vec[1]),str(z0Vec[2])],loc=2)
+	ax1.legend([str(z0Vec[0]),str(z0Vec[1]),str(z0Vec[2])],bbox_to_anchor=(1.25, 0.), loc='lower left', borderaxespad=0., title='z0 [m]')
+	fig1.suptitle('Horizontal wind shear above hill\nHill shape Martinez 2011, h = ' + str(h[0]) + '[m], $y_{m}$ = ' + str(yM) + ' [m]',fontsize=16)
+	fig1.tight_layout()
+	fig1.subplots_adjust(top=0.85)
+	pdf.savefig(fig1)
+	
+	ax2.legend([str(z0Vec[0]),str(z0Vec[1]),str(z0Vec[2])],bbox_to_anchor=(1.25, 0.), loc='lower left', borderaxespad=0., title='z0 [m]')
+	fig2.suptitle('Accelaration above hill\nHill shape Martinez 2011, h = ' + str(h[0]) + '[m]',fontsize=16)
+	fig2.tight_layout()
+	fig2.subplots_adjust(top=0.85)
+	pdf.savefig(fig2)
 	
 	#plotting error vs. z/h for different AR
 	fig3 = plt.figure(3);
-
 	for i, ARi in enumerate(ARvec):
 	
 		# err_plus
 		ax = fig3.add_subplot(3,1,1)
+		plt.title('error from picking higher z0')
 		color = cm(1.*i/NUM_COLORS)  # color will now be an RGBA tuple
+		if i==len(ARvec)-1 and flatFlag:
+			ARlabel = 'flat'
+		else:
+			ARlabel = str(ARi)
 		err_plus = (Umat[i,2,:]-Umat[i,1,:])/Umat[i,1,:]	*100
-		plt.plot(err_plus,y)
-	
+		plt.plot(err_plus,y,color=color,label=ARlabel)
+		plt.axis([-10,10,yM,max(y)])
+		xticks = [0,1,2,3,4,5]
+		plt.xticks(xticks)
+		plt.grid(which='major')
+		
 		# err_minus
-		ax = fig3.add_subplot(3,1,2)
+		ax3 = fig3.add_subplot(3,1,2)
+		plt.title('error from picking lower z0')
 		color = cm(1.*i/NUM_COLORS)  # color will now be an RGBA tuple
 		err_minus = (Umat[i,0,:]-Umat[i,1,:])/Umat[i,1,:]	*100
-		plt.plot(y,err_minus)
+		plt.plot(err_minus,y,color=color,label=ARlabel)
+		plt.ylabel('y [m]')
+		plt.axis([-10,10,yM,max(y)])
+		xticks = [-5,-4,-3,-2,-1,0]
+		plt.xticks(xticks)
+		plt.grid(which='major')
 		
 		# sum of errors
 		ax = fig3.add_subplot(3,1,3)
+		plt.title('sum of z0 induced error')
+		plt.xlabel('error %');
 		color = cm(1.*i/NUM_COLORS)  # color will now be an RGBA tuple
 		err = abs(err_minus)+abs(err_plus)
-		plt.plot(err,y)
+		plt.plot(err,y,color=color,label=ARlabel)
+		plt.axis([-10,10,yM,max(y)])
+		fig3.set_facecolor('w')
+		plt.tight_layout()
+		xticks = [0,1,2,3,4,5,6,7,8]
+		plt.xticks(xticks)
+		plt.grid(which='major')
 		
+	l = ax3.legend(title='AR',loc=6,bbox_to_anchor=(0.05, 0.55))
+	l.set_zorder(100)
+	fig3.suptitle('Errors above hill\nHill shape Martinez 2011, h = ' + str(h[0]) + '[m], $y_{m}$ = ' + str(yM) + ' [m]',fontsize=16)
+	plt.tight_layout()
+	plt.subplots_adjust(top=0.85)
+	pdf.savefig()
+	
 	# plotting S vs. AR for different z/h	
 	
 			
@@ -189,7 +236,7 @@ def main(target, yM, UM, flatFlag):
 	err2_minus 	= (Umat2[:,0]-Umat2[:,1])/Umat2[:,1]	*100
 
 	# plotting err
-	fig2 = figure(10)
+	fig4 = figure(10,figsize=(14,8))
 	ax = subplot(2,1,1)
 	plt.hold(True)
 	bark = plt.bar(ARvec,err43_plus ,width=0.25,color='k') 
@@ -198,13 +245,11 @@ def main(target, yM, UM, flatFlag):
 	plt.bar(ARvec+0.75,err2_minus ,width=0.25,color='r')
 	plt.grid(which='major')
 	plt.grid(which='minor')
-	plt.legend((bark[0], barr[0]),(r'$\frac{4}{3}\cdot y_m$',r'$2\cdot y_m$'),loc=4)
-	# TODO 2 line title below
+
 	plt.suptitle('z0 induced error for extrapolation of velocity measurement above hill center',fontsize=16)
-	plt.title('for nominal z0 = ' + str(z0Vec[1]) + ' and z0 error from ' + str(z0Vec[0]) + ' to ' + str(z0Vec[2]) + '[m]')
+	plt.title('Martinez2011 hill shape. Nominal z0 = ' + str(z0Vec[1]) + ' and z0 error from ' + str(z0Vec[0]) + ' to ' + str(z0Vec[2]) + '[m]')
 	plt.xlabel('AR')
-	plt.ylabel('error [%]')
-	fig2.set_facecolor('w')  
+	plt.ylabel('error [%]') 
 
 	# theoretical error for flat terrain
 	theo_plus_2 	= ((log(yM*2/z0Vec[2])*log(yM/z0Vec[1]))/(log(yM/z0Vec[2])*log(yM*2/z0Vec[1]))-1)*100					# [m]
@@ -216,36 +261,44 @@ def main(target, yM, UM, flatFlag):
 	plt.bar(30.25,theo_minus_43,width=0.25,color='k',edgecolor='g') 
 	plt.bar(30.5,theo_plus_2  ,width=0.25,color='r',edgecolor='g')
 	plt.bar(30.75,theo_minus_2 ,width=0.25,color='r',edgecolor='g')
-	ax.text(28,3.2,'Theorethical')
-	if flatFlag:
-		ax.text(23	,3.22,'Flat plane')
-	
+	xticks = [1,3,5,8,16,25,30]
+	plt.xticks(xticks,['1','3','5','8','16','flat plane','theory'])
+		
 	subplot(2,1,2)
 	plt.hold(True)
 	plt.bar(ARvec,err43_plus-err43_minus ,width=0.25,color='k') 
 	plt.bar(ARvec+0.25,err2_plus-err2_minus,width=0.25,color='r') 
 	plt.grid(which='major')
 	plt.grid(which='minor')
-	# TODO 2 line title below
 	plt.xlabel('AR')
-	plt.ylabel('error [%]')
-	fig2.set_facecolor('w')  
+	plt.ylabel('Absolute error sum [%]')
+	plt.subplots_adjust(bottom=0.25)
+	plt.legend((bark[0], barr[0]),(r'$\frac{4}{3}\cdot y_m$',r'$2\cdot y_m$'),loc='lower center',bbox_to_anchor=(0.45, -0.8),title=(r'$y_m$=')+str(yM)+' [m], h='+str(h[0])+(r' [m] $\frac{y_m}{h}$=') + str(yM/h[0]) ) 
 
 	plt.bar(30,theo_plus_43-theo_minus_43 ,width=0.25,color='k',edgecolor='g')
 	plt.bar(30.25,theo_plus_2-theo_minus_2  ,width=0.25,color='r',edgecolor='g')
+	plt.xticks(xticks,['1','3','5','8','16','flat plane','theory'])
+	fig4.set_facecolor('w') 
+	pdf.savefig()
+	
+	# thismanager = get_current_fig_manager()
+	# thismanager.window.SetPosition((500, 0))
 
 	# plotting S
+	pdf.close()
+	if show:
+		plt.show()
 	
- 	plt.show()
 	
 if __name__ == '__main__':
 	# reading arguments
 	n = len(sys.argv)
-	if n<4:
-		print "Need <TARGET> <yM> <UM> <flatFlag>"
+	if n<5:
+		print "Need <TARGET> <yM> <UM> <flatFlag> <show>"
 		sys.exit(-1)
 	target    = sys.argv[1]
 	yM 	  = float(sys.argv[2])
 	UM    = float(sys.argv[3])
 	flatFlag 	  = float(sys.argv[4])
-	main(target, yM, UM, flatFlag)
+	show 	  = float(sys.argv[5])
+	main(target, yM, UM, flatFlag,show)

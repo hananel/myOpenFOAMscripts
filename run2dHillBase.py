@@ -141,8 +141,8 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 	# 7: changing convergence criterion for Crude runs
 	if caseType == "Crude":	
 		fvSolutionFile = ParsedParameterFile(path.join(work.systemDir(),"fvSolution"))
-		fvSolutionFile["SIMPLE"]["residualControl"]["p"] = 1e-6
-		fvSolutionFile["SIMPLE"]["residualControl"]["U"] = 1e-6
+		fvSolutionFile["SIMPLE"]["residualControl"]["p"] = 1e-4
+		fvSolutionFile["SIMPLE"]["residualControl"]["U"] = 1e-4
 		fvSolutionFile.writeFile()
  	
 	# mapping fields - From earlier result if exists
@@ -160,7 +160,7 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 	# parallel rule
 	cells = nx * (ny+2*ns)
 	print "Mesh has " + str(cells) + " cells"
-	if cells>40000: parallel=1
+	if cells>20000: parallel=1
 	else: parallel=0
 
 	if parallel:

@@ -74,10 +74,10 @@ AR 		= float(sys.argv[7])
 
 # TODO dummy parameters for now - C stands for "Crude" parameters
 hillName = "MartinezBump2D"
-r, rC        	= 1.06, 1.15	
+r, rC        	= 1.06, 1.1	
 x        	= 20
 H 	 	= 3000	# [m]
-h 	 = 200   # hill heigh
+h 	 = 200   # hill height
 k 	 = 0.4	# von Karman constant
 relax 	 = 1
 epsilon  = 0.001
@@ -94,7 +94,7 @@ for counter, ARnum in enumerate(range(7, n)):
 	# looping Hn inputs
 	AR = float(sys.argv[ARnum])
 	Ls       	= max(3000,AR*h*5)
-	x0, x0C 	= AR*h/80, AR*h/20
+	x0, x0C 	= AR*h/60, AR*h/20
 	L        	= AR*h*2 
 	L1	 	= L 	#upwind refined area posibly smaller then downwind
 	print "----------------------------------"
@@ -121,38 +121,37 @@ for counter, ARnum in enumerate(range(7, n)):
 	f.write("Crude runs:")
 	print hilite("initial guess of us is: " + str((100*us//1)*0.01),0,1)
 	f.write("initial guess of us is: " + str((100*us//1)*0.01))
-	while notConverged:
-		y,Ux_y,Uy_y = run2dHillBase(template0, target0, hillName, AR, rC, x, Ls, L, L1, H, x0C, z0, us, yM, h, "Crude")
-		# checking convergence
-		UxSimulation = interp(yM,y,Ux_y)
-		err = (UM-UxSimulation)/UM
-		notConverged = abs(err)>epsilon	
-		print hilite("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
-				str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%",0,1)
-		f.write("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
-				str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%")
-		# changing us
-		us = us/(1-err)*relax
-		print hilite("us = " +  str((100*us//1)*0.01),0,1)
-		f.write("us = " +  str((100*us//1)*0.01))
+	
+	y,Ux_y,Uy_y = run2dHillBase(template0, target0, hillName, AR, rC, x, Ls, L, L1, H, x0C, z0, us, yM, h, "Crude")
+	# checking convergence
+	UxSimulation = interp(yM,y,Ux_y)
+	err = (UM-UxSimulation)/UM
+	notConverged = abs(err)>epsilon	
+	print hilite("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
+			str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%",0,1)
+	f.write("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
+			str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%")
+	# changing us
+	us = us/(1-err)*relax
+	print hilite("us = " +  str((100*us//1)*0.01),0,1)
+	f.write("us = " +  str((100*us//1)*0.01))
 	print hilite("Refined runs:",1,1)
 	f.write("Refined runs:")
-	notConverged = 1
-	while notConverged:
-		y,Ux_y,Uy_y = run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, us, yM, h, "mapFields")
-		# checking convergence
-		UxSimulation = interp(yM,y,Ux_y)
-		err = (UM-UxSimulation)/UM
-		notConverged = abs(err)>epsilon	
-		print hilite("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
-				str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%",0,1)
-		f.write("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
-				str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%")
-		# changing us
-		us = us/(1-err)*relax
-		print hilite("us = " +  str((100*us//1)*0.01),0,1)
-		f.write("us = " +  str((100*us//1)*0.01))
-	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+	
+	y,Ux_y,Uy_y = run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, us, yM, h, "mapFields")
+	# checking convergence
+	UxSimulation = interp(yM,y,Ux_y)
+	err = (UM-UxSimulation)/UM
+	notConverged = abs(err)>epsilon	
+	print hilite("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
+			str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%",0,1)
+	f.write("UM = " +  str((100*UM//1)*0.01) + " ,UxSimulation = " + 
+			str((100*UxSimulation//1)*0.01) + " ,error is " + str(err*100//1) + "%")
+	# changing us
+	us = us/(1-err)*relax
+	print hilite("us = " +  str((100*us//1)*0.01),0,1)
+	f.write("us = " +  str((100*us//1)*0.01))
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 	# # # # # # # # # # # # # #  		3	 	# # # # # # # # # # # # # # # #
 	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 	
