@@ -93,9 +93,9 @@ def run2dHillBase(template0, target0, hillName, AR, r, x, Ls, L, L1, H, x0, z0, 
 	bmName = path.join(work.systemDir(),"sampleDict")
 	template = TemplateFile(bmName + ".template")
 	if AR==1000: # if flat terrain
-		template.writeToFile(bmName,{'hillTopY':0,'maxY':yM*2.5})
+		template.writeToFile(bmName,{'hillTopY':0,'maxY':yM*10})
 	else:
-		template.writeToFile(bmName,{'hillTopY':h,'maxY':yM*2.5+h})
+		template.writeToFile(bmName,{'hillTopY':h,'maxY':yM*10+h})
 
 	# running blockMesh
 	blockRun = BasicRunner(argv=["blockMesh",'-case',work.name],silent=True,server=False,logname="blockMesh")

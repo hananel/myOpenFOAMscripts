@@ -14,7 +14,7 @@ from Davenport import Davenport
 import pdb
 b = pdb.set_trace
 
-def main(target, yM, UM, flatFlag, show):
+def main(target, yM, UM, flatFlag, show, sampleFlagg):
 	colorVec = ['r','k','b']
 	line1 = [0,0,0]
  	dirNameList = [x for x in glob.glob(target+'*') if not x.endswith('Crude')]
@@ -70,6 +70,23 @@ def main(target, yM, UM, flatFlag, show):
 		else:
 			h[i] = int(dirName[hs+3:he])
 		
+	if sampleFlag:
+		# sample results
+		dirNameList = glob.glob(target + "*")
+		dirNameList.sort()
+		for dirName in dirNameList:
+			# changing sample dictionary
+			from PyFoam.RunDictionary.ParsedParameterFile 	import ParsedParameterFile
+			b()
+			sampleDict = ParsedParameterFile(path.join(dirName,"/system/sampleDict"))
+			
+			hmin = sampleDict["sets"]["line_y"]["start"](1)
+			sampleDict["sets"]["line_y"]["end"] = "( 0 " + str(hmin+150) + " 0 )"
+			sampleDict.writeFile()
+ 			# sampling
+ 			arg = " -case " + dirName + "/"
+ 			sampleRun = BasicRunner(argv=["sample -latestTime" + arg],silent=True,server=False,logname="sampleLog")
+			sampleRun.start()
 	# reading data
  	for i, dirName in enumerate(dirNameList):
 		ARcurrent = ARvec[i//3]
@@ -93,7 +110,11 @@ def main(target, yM, UM, flatFlag, show):
 		
   		data_y = genfromtxt(setName[p] + '/line_y_U.xy',delimiter=' ')
   		y, Ux_y, Uy_y  = data_y[:,0], data_y[:,1], data_y[:,2]
-		y = y-h[i] # normalizing data to height of hill-top above ground
+		y = y-y[0] # normalizing data to height of hill-top above ground
+			   # new -       2/9/12 - using y[0] instead of h[i]
+		y5000 = linspace(y[0],y[len(y)-1],5000)
+		Ux_y = interp(y5000,y,Ux_y)
+		y = y5000
 		# applying linear factor to dictate Um at yM
 		Ux_yM = interp(yM,y,Ux_y)
 		
@@ -293,12 +314,13 @@ def main(target, yM, UM, flatFlag, show):
 if __name__ == '__main__':
 	# reading arguments
 	n = len(sys.argv)
-	if n<5:
-		print "Need <TARGET> <yM> <UM> <flatFlag> <show>"
+	if n<7:
+		print "Need <TARGET> <yM> <UM> <flatFlag> <show> <sampleFlag>"
 		sys.exit(-1)
-	target    = sys.argv[1]
-	yM 	  = float(sys.argv[2])
-	UM    = float(sys.argv[3])
-	flatFlag 	  = float(sys.argv[4])
-	show 	  = float(sys.argv[5])
-	main(target, yM, UM, flatFlag,show)
+	target    	= sys.argv[1]
+	yM 	  		= float(sys.argv[2])
+	UM    		= float(sys.argv[3])
+	flatFlag 	= float(sys.argv[4])
+	show 	  	= float(sys.argv[5])
+	sampleFlag 	= float(sys.argv[6])
+	main(target, yM, UM, flatFlag,show, sampleFlag)
