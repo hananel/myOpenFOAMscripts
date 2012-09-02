@@ -1,0 +1,14 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys, os, glob
+import pylab
+dirClassifier 	= sys.argv[1]
+orig 			= sys.argv[2]
+new 			= sys.argv[3]
+
+dirs = glob.glob(dirClassifier)
+for name in dirs:
+	path = os.getcwd()
+	os.rename(os.path.join(path,name),os.path.join(path,name.replace(orig,new)))
+	print name
