@@ -57,9 +57,11 @@ y0        = float(sys.argv[4]) 		# y location of center of grid
 l       = float(sys.argv[5])		# length of rectangle (in flow direction)
 d        = float(sys.argv[6])		# width of rectangele
 phi       = pi/180*float(sys.argv[7])	# angle to north (clock wise) of flow direction
-cell	 = int(sys.argv[8])		# length of each cell
-a	= float(sys.argv[9])		# length of central hill
-H	= float(sys.argv[10])		# height of central hill
+cell	 = int(sys.argv[8])			# length of each cell
+a	= float(sys.argv[9])			# length of central hill
+H	= float(sys.argv[10])			# height of central hill
+H0 = float(sys.argv[11])
+stlFileName = sys.argv[12]			# for different then terrain.stl file name
 
 # case definitions - Askervein
 z0 = 0.03 	# [m]
@@ -78,6 +80,7 @@ orig = SolutionDirectory(template0,
 #--------------------------------------------------------------------------------------
 # cloaning case
 #--------------------------------------------------------------------------------------
+print "cloaning case (if stl file is large - this will take a while)"
 work = orig.cloneCase(target0)
 
 #--------------------------------------------------------------------------------------
@@ -106,7 +109,7 @@ template.writeToFile(bmName,{'X0':x1,'X1':x2,'X2':x3,'X3':x4,'Y0':y1,'Y1':y2,'Y2
 blockRun = BasicRunner(argv=["blockMesh",'-case',work.name],silent=True,server=False,logname="blockMesh")
 print "Running blockMesh"
 blockRun.start()
-if not blockRun.runOK(): error("there was an error with blockMesh")
+if not blockRun.runOK(): print("there was an error with blockMesh")
 
 #--------------------------------------------------------------------------------------
 # changing ABLconditions 
@@ -127,17 +130,17 @@ template.writeToFile(bmName,{'us':us,'Uref':Uref,'Href':Href,'z0':z0,'xDirection
 print "calculating SHM parameters"
 # calculating refinement box positions
 l1, l2, h1, h2 = 2*a, 1.3*a, 4*H, 2*H # refinement rulls - Martinez 2011
-refBox1_minx, refBox1_miny, refBox1_minz = x0 - l1/sin(phi), y0 - l1/cos(phi), 0 #enlarging too take acount of the rotation angle
-refBox1_maxx, refBox1_maxy, refBox1_maxz = x0 + l1/sin(phi), y0 + l1/cos(phi), h1 #enlarging too take acount of the rotation angle
-refBox2_minx, refBox2_miny, refBox2_minz = x0 - l2/sin(phi), y0 - l2/cos(phi), 0 #enlarging too take acount of the rotation angle
-refBox2_maxx, refBox2_maxy, refBox2_maxz = x0 + l2/sin(phi), y0 + l2/cos(phi),h2 #enlarging too take acount of the rotation angle
+refBox1_minx, refBox1_miny, refBox1_minz = x0 - l1/sin(phi), y0 - l1/cos(phi), H0 #enlarging too take acount of the rotation angle
+refBox1_maxx, refBox1_maxy, refBox1_maxz = x0 + l1/sin(phi), y0 + l1/cos(phi), H0+h1 #enlarging too take acount of the rotation angle
+refBox2_minx, refBox2_miny, refBox2_minz = x0 - l2/sin(phi), y0 - l2/cos(phi), H0 #enlarging too take acount of the rotation angle
+refBox2_maxx, refBox2_maxy, refBox2_maxz = x0 + l2/sin(phi), y0 + l2/cos(phi),H0+h2 #enlarging too take acount of the rotation angle
 # changing snappyHexMeshDict
 snapName = path.join(work.systemDir(),"snappyHexMeshDict")
 template = TemplateFile(snapName+".template")
 print snapName + ".template"
-#template.writeToFile(bmName,{'refBox1_minx':refBox1_minx,'refBox1_miny':refBox1_miny,'refBox1_minz':refBox1_minz,'refBox1_maxx':refBox1_maxx,'refBox1_maxy':refBox1_maxy,'refBox1_maxz':refBox1_maxz,'refBox2_minx':refBox2_minx,'refBox2_miny':refBox2_miny,'refBox2_minz':refBox2_minz,'refBox2_maxx':refBox2_maxx,'refBox2_maxy':refBox2_maxy,'refBox2_maxz':refBox2_maxz,'locInMesh_x':x0,'locInMesh_y':y0,'locInMesh_z':zz})
-print refBox1_minx
-template.writeToFile(snapName,{'refBox1_minx':refBox1_minx})
+template.writeToFile(snapName,{'refBox1_minx':refBox1_minx,'refBox1_miny':refBox1_miny,'refBox1_minz':refBox1_minz,'refBox1_maxx':refBox1_maxx,'refBox1_maxy':refBox1_maxy,'refBox1_maxz':refBox1_maxz,'refBox2_minx':refBox2_minx,'refBox2_miny':refBox2_miny,'refBox2_minz':refBox2_minz,'refBox2_maxx':refBox2_maxx,'refBox2_maxy':refBox2_maxy,'refBox2_maxz':refBox2_maxz,'locInMesh_x':x0,'locInMesh_y':y0,'locInMesh_z':zz})
+#print refBox1_minx
+#template.writeToFile(snapName,{'refBox1_minx':refBox1_minx})
 
 
 print "wow"
