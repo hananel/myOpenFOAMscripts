@@ -199,6 +199,7 @@ def run3dHillBase(template0, AR, z0, us, caseType):
 	#if cells>100000: parallel=1
 	#else: parallel=0
 	parallel = 1
+	cluster = 1
 	if parallel:
 		#--------------------------------------------------------------------------------------
 		# decomposing

@@ -47,6 +47,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from Davenport import Davenport
 from run2dHillBase import run2dHillBase
 from hilite import hilite
+from multiprocessing import Process
 
 subprocess.call("killall gnuplot_x11",shell=True)
 subprocess.call("clear",shell=True)
