@@ -13,12 +13,16 @@ from matplotlib import rc
 from Davenport import Davenport
 import pdb
 b = pdb.set_trace
+from argparse import ArgumentParser
+import scipy.interpolate as sc
 
-def main(target, yM, UM, flatFlag, show):
+def main(target, yM, UM, flatFlag, plotSurface, show):
     colorVec = ['r','k','b']
     line1 = [0,0,0]
     dirNameList = [x for x in glob.glob(target+'*') if not x.endswith('Crude')]
     pdf = PdfPages('results_ym_' + str(yM) + '_Um_' + str(UM) + '.pdf')
+    if plotSurface:
+        pdfSurface = PdfPages('surfaces_' + str(yM) + '_Um_' + str(UM) + '.pdf')
     # d = pdf.infodict()
     # d['ModDate'] = datetime.datetime.today()
     
@@ -94,7 +98,7 @@ def main(target, yM, UM, flatFlag, show):
         
         data_y = genfromtxt(setName1[p] + '/line_y_U.xy',delimiter=' ')
         y, Ux_y, Uy_y  = data_y[:,0], data_y[:,1], data_y[:,2]
-        y = y-h[i] # normalizing data to height of hill-top above ground
+        y = y-y[0] # normalizing data to height of hill-top above ground
         # applying linear factor to dictate Um at yM
         Ux_yM = interp(yM,y,Ux_y)
         
@@ -163,7 +167,24 @@ def main(target, yM, UM, flatFlag, show):
         y5000 = linspace(y[0],y[len(y)-1],5000)
         Ux_y5000 = interp(y5000,y,Ux_y)
         Umat[i//3,i%3,:]            = Ux_y5000
-    
+
+        # contour plot of cuttingPlane surface - middle of hill along flow direction
+        if plotSurface:
+            fig = figure()
+            Nx, Ny = 251, 251
+            data = genfromtxt(dirName+'/surfaces/'+str(m)+'/U_cuttingPlane.raw',delimiter=' ')
+            xi = linspace(-2*h[i]*ARcurrent,2*h[i]*ARcurrent,Nx)
+            yi = linspace(0,h[i]*4,Ny)
+            # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
+            xmesh, ymesh = meshgrid(xi, yi) 
+            b()
+            zi = sc.griddata((data[:,0].ravel(),data[:,2].ravel()), data[:,3].ravel(), (xmesh,ymesh))
+            CS = plt.contour(xi,yi,zi,[0, 0],linewidths=0.5,colors='k')
+            CS = plt.contourf(xi,yi,zi,400,cmap=plt.cm.jet,linewidths=0)
+            colorbar(CS)
+            axis('equal')
+            title(dirName)
+            pdfSurface.savefig(fig)
 
     # adding legend
     ax1.legend([str(z0Vec[0]),str(z0Vec[1]),str(z0Vec[2])],bbox_to_anchor=(1.25, 0.), loc='lower left', borderaxespad=0., title='z0 [m]')
@@ -287,8 +308,11 @@ def main(target, yM, UM, flatFlag, show):
     plt.bar(30.25,theo_plus_2-theo_minus_2  ,width=0.25,color='r',edgecolor='g')
     plt.xticks(xticks,['1','3','5','8','16','flat plane','theory'])
     fig4.set_facecolor('w') 
-    pdf.savefig()
     
+    pdf.savefig()
+    if plotSurface:
+        pdfSurface.close()
+
     # thismanager = get_current_fig_manager()
     # thismanager.window.SetPosition((500, 0))
 
@@ -300,13 +324,18 @@ def main(target, yM, UM, flatFlag, show):
     
 if __name__ == '__main__':
     # reading arguments
-    n = len(sys.argv)
-    if n<5:
-        print "Need <TARGET> <yM> <UM> <flatFlag> <show>"
-        sys.exit(-1)
-    target    = sys.argv[1]
-    yM    = float(sys.argv[2])
-    UM    = float(sys.argv[3])
-    flatFlag      = float(sys.argv[4])
-    show      = float(sys.argv[5])
-    main(target, yM, UM, flatFlag,show)
+    parser = ArgumentParser()
+    parser.add_argument('--target', required=True , help="target name (start of the directory name) for plotting cases")
+    parser.add_argument('--yM', type=float, default=20.0, help='height above ground where measurement took place. Assuming xM = 0 [m] at the moment 20/9/12')
+    parser.add_argument('--UM', type=float, default=5.0, help='velocity measured at (xM,yM)')
+    parser.add_argument('--flatFlag',type=bool, default=False, help='True if a case with flat surface exists in target cases')
+    parser.add_argument('--plotSurface', type=bool, default=False,help='True for plotting cuttingPlane sampled surface in raw format')
+    parser.add_argument('--show',type=bool, default=True, help='True if plots are to be shown. Other wise they are created but not shown')
+    args = parser.parse_args(sys.argv[1:])
+    target = args.target
+    yM = args.yM
+    UM = args.UM
+    flatFlag = args.flatFlag
+    show = args.show
+    plotSurface = args.plotSurface;
+    main(target, yM, UM, flatFlag, plotSurface, show)

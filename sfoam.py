@@ -98,10 +98,23 @@ def create_machine_file():
         fd.writelines(x + '\n' for x in node_list)
     return machine_dir, machine_file
 
-if __name__ == '__main__':
+def sfoam(main,tasks,progname): 
     atexit.register(cleanup)
     #test_re_matches()
     #raise SystemExit
+    if 'SLURM_JOBID' in os.environ:
+        machine_dir, machine_file = create_machine_file()
+        print "machine_file = %s" % machine_file
+        print "in salloc, calling %s" % main
+        if tasks==1:
+            os.system("%(main)s --progress simpleFoam " % locals())
+        else:
+            os.system("%(main)s --procnr=%(tasks)s --progress --machinefile=%(machine_file)s simpleFoam " % locals())
+    else:
+        print "calling salloc for OpenFOAM"
+        os.system("salloc -n %(tasks)s %(progname)s -n %(tasks)s --main %(main)s" % locals())
+
+def main():
     parser = ArgumentParser()
     parser.add_argument('--main', default="pyFoamRunner.py", help="name of executable for salloc")
     parser.add_argument('-n', type=int, default=8, help='number of tasks')
@@ -110,14 +123,7 @@ if __name__ == '__main__':
     tasks = args.n
     progname = sys.argv[0]
     print "main = %s, n = %s" % (args.main, args.n)
-    if 'SLURM_JOBID' in os.environ:
-        machine_dir, machine_file = create_machine_file()
-        print "machine_file = %s" % machine_file
-        print "in salloc, calling %s" % args.main
-        if tasks==1:
-            os.system("%(main)s --progress simpleFoam " % locals())
-        else:
-            os.system("%(main)s --procnr=%(tasks)s --progress --machinefile=%(machine_file)s simpleFoam " % locals())
-    else:
-        print "calling salloc for OpenFOAM"
-        os.system("salloc -n %(tasks)s %(progname)s -n %(tasks)s --main %(main)s" % locals())
+    sfoam(main=main, tasks=tasks, progname=progname)
+
+if __name__ == '__main__':
+    main()
