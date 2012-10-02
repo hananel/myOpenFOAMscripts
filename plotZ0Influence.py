@@ -116,7 +116,7 @@ def main(target, yM, UM, flatFlag, plotSurface, show):
         S = 0
         Ux_inlet_interp = interp(y,y_inlet,Ux_inlet)
         S = (Ux_y - Ux_inlet_interp)/Ux_inlet_interp
-        
+
         # plotting Uy
         fig1 = plt.figure(1)
         ax1 = fig1.add_subplot(3,1+len(ARvec)//3,1+i//3)
@@ -173,12 +173,14 @@ def main(target, yM, UM, flatFlag, plotSurface, show):
             fig = figure()
             Nx, Ny = 251, 251
             data = genfromtxt(dirName+'/surfaces/'+str(m)+'/U_cuttingPlane.raw',delimiter=' ')
-            xi = linspace(-2*h[i]*ARcurrent,2*h[i]*ARcurrent,Nx)
-            yi = linspace(0,h[i]*4,Ny)
+            xi = linspace(-100,100,Nx) # -2*h[i]*ARcurrent,2*h[i]*ARcurrent,Nx)
+            yi = linspace(0,3000) #0,h[i]*4,Ny)
             # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
             xmesh, ymesh = meshgrid(xi, yi) 
-            b()
-            zi = sc.griddata((data[:,0].ravel(),data[:,2].ravel()), data[:,3].ravel(), (xmesh,ymesh))
+            if dirName.find('2D'):
+                zi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), data[:,3].ravel(), (xmesh,ymesh))
+            else:
+                zi = sc.griddata((data[:,0].ravel(),data[:,2].ravel()), data[:,3].ravel(), (xmesh,ymesh))
             CS = plt.contour(xi,yi,zi,[0, 0],linewidths=0.5,colors='k')
             CS = plt.contourf(xi,yi,zi,400,cmap=plt.cm.jet,linewidths=0)
             colorbar(CS)
@@ -241,7 +243,7 @@ def main(target, yM, UM, flatFlag, plotSurface, show):
         plt.plot(err,y,color=color,label=ARlabel)
         plt.axis([-10,10,yM,max(y)])
         fig3.set_facecolor('w')
-        if double(matplotlib.__version__[0])>0: # if version 1.1 or higher
+        if double(matplotlib.__version__[0])>0: # if version 1.01 or higher
             plt.tight_layout()
         xticks = [0,1,2,3,4,5,6,7,8]
         plt.xticks(xticks)
@@ -250,7 +252,7 @@ def main(target, yM, UM, flatFlag, plotSurface, show):
     l = ax3.legend(title='AR',loc=6,bbox_to_anchor=(0.05, 0.55))
     l.set_zorder(100)
     fig3.suptitle('Errors above hill\nHill shape Martinez 2011, h = ' + str(h[0]) + '[m], $y_{m}$ = ' + str(yM) + ' [m]',fontsize=16)
-    if double(matplotlib.__version__[0])>0: # if version 1.1 or higher
+    if double(matplotlib.__version__[0])>0: # if version 1.01 or higher
         plt.tight_layout()
     plt.subplots_adjust(top=0.85)
     pdf.savefig()
