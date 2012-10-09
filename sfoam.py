@@ -98,32 +98,37 @@ def create_machine_file():
         fd.writelines(x + '\n' for x in node_list)
     return machine_dir, machine_file
 
-def sfoam(main,tasks,progname): 
+def sfoam(main,tasks,target,progname): 
     atexit.register(cleanup)
     #test_re_matches()
     #raise SystemExit
     if 'SLURM_JOBID' in os.environ:
         machine_dir, machine_file = create_machine_file()
         print "machine_file = %s" % machine_file
+        if not(target is "."):
+            os.chdir(target)
         print "in salloc, calling %s" % main
         if tasks==1:
-            os.system("%(main)s --progress simpleFoam " % locals())
+            os.system("%(main)s --silent simpleFoam " % locals())
         else:
-            os.system("%(main)s --procnr=%(tasks)s --progress --machinefile=%(machine_file)s simpleFoam " % locals())
+            os.system("%(main)s --procnr=%(tasks)s --silent --machinefile=%(machine_file)s simpleFoam " % locals())
     else:
         print "calling salloc for OpenFOAM"
-        os.system("salloc -n %(tasks)s %(progname)s -n %(tasks)s --main %(main)s" % locals())
+        os.system("salloc -n %(tasks)s %(progname)s -n %(tasks)s --main %(main)s --target %(target)s" % locals())
 
 def main():
+    #print "sfoam debug:", repr(sys.argv)
     parser = ArgumentParser()
     parser.add_argument('--main', default="pyFoamRunner.py", help="name of executable for salloc")
-    parser.add_argument('-n', type=int, default=8, help='number of tasks')
+    parser.add_argument('--target', default=".", help="case directory. runs from local directory as default")
+    parser.add_argument('-n', type=int, default=1, help='number of tasks')
     args = parser.parse_args(sys.argv[1:])
     main = args.main
     tasks = args.n
+    target = args.target
     progname = sys.argv[0]
-    print "main = %s, n = %s" % (args.main, args.n)
-    sfoam(main=main, tasks=tasks, progname=progname)
+    print "main = %s, n = %s, target = %s" % (args.main, args.n, args.target)
+    sfoam(main=main, tasks=tasks, target=target, progname=progname)
 
 if __name__ == '__main__':
     main()
