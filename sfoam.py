@@ -111,17 +111,17 @@ def sfoam(main,tasks,target,progname):
         if tasks==1:
             os.system("%(main)s --silent simpleFoam " % locals())
         else:
+
             os.system("%(main)s --procnr=%(tasks)s --silent --machinefile=%(machine_file)s simpleFoam " % locals())
     else:
         print "calling salloc for OpenFOAM"
-        os.system("salloc -n %(tasks)s %(progname)s -n %(tasks)s --main %(main)s --target %(target)s" % locals())
+        os.system("salloc -n %(tasks)s %(progname)s --n %(tasks)s --main %(main)s --target %(target)s" % locals())
 
 def main():
-    #print "sfoam debug:", repr(sys.argv)
     parser = ArgumentParser()
     parser.add_argument('--main', default="pyFoamRunner.py", help="name of executable for salloc")
     parser.add_argument('--target', default=".", help="case directory. runs from local directory as default")
-    parser.add_argument('-n', type=int, default=1, help='number of tasks')
+    parser.add_argument('--n', type=int, default=1, help='number of tasks')
     args = parser.parse_args(sys.argv[1:])
     main = args.main
     tasks = args.n
