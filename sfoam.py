@@ -3,7 +3,9 @@
 """
 usage:
 
-sfoam.py -n 16 --main pyFoamPlotRunner.py --procnr=8 --machine_file=machinesPy simpleFoam
+sfoam.py -n 16 --main pyFoamRunner.py --name=case1_SimpleFoam
+sfoam.py -n 16 --main pyFoamPlotRunner.py --machine_file=machinesPy --name=case1_PimpleFoam --solver pimpleFoam
+
 """
 
 from shutil import rmtree
@@ -98,7 +100,7 @@ def create_machine_file():
         fd.writelines(x + '\n' for x in node_list)
     return machine_dir, machine_file
 
-def sfoam(main,tasks,target,progname,name): 
+def sfoam(main,tasks,target,progname,solver,name): 
     atexit.register(cleanup)
     #test_re_matches()
     #raise SystemExit
@@ -107,15 +109,15 @@ def sfoam(main,tasks,target,progname,name):
         print "machine_file = %s" % machine_file
         if not(target is "."):
             os.chdir(target)
-        print "in salloc, calling %s" % main
+        print "in salloc, calling %s with solver %s" % (main,solver)
         if tasks==1:
-            os.system("%(main)s --silent simpleFoam " % locals())
+            os.system("%(main)s --silent %(solver)s " % locals())
         else:
 
-            os.system("%(main)s --procnr=%(tasks)s --silent --machinefile=%(machine_file)s simpleFoam " % locals())
+            os.system("%(main)s --procnr=%(tasks)s --silent --machinefile=%(machine_file)s %(solver)s " % locals())
     else:
         print "calling salloc for OpenFOAM"
-        os.system("salloc -J %(name)s -n %(tasks)s %(progname)s --n %(tasks)s --main %(main)s --target %(target)s" % locals())
+        os.system("salloc -J %(name)s -n %(tasks)s %(progname)s --n %(tasks)s --main %(main)s --target %(target)s --solver %(solver)s" % locals())
 
 def main():
     parser = ArgumentParser()
@@ -123,14 +125,16 @@ def main():
     parser.add_argument('--target', default=".", help="case directory. runs from local directory as default")
     parser.add_argument('--n', type=int, default=1, help='number of tasks')
     parser.add_argument('--name', default='sfoam.py', help='task name')
+    parser.add_argument('--solver', default='simpleFoam', help='solver name')
     args = parser.parse_args(sys.argv[1:])
     main = args.main
     tasks = args.n
     target = args.target
     progname = sys.argv[0]
+    solver = args.solver
     name = args.name
     print "main = %s, n = %s, target = %s" % (args.main, args.n, args.target)
-    sfoam(main=main, tasks=tasks, target=target, progname=progname, name=name)
+    sfoam(main=main, tasks=tasks, target=target, progname=progname, solver=solver, name=name)
 
 if __name__ == '__main__':
     main()
