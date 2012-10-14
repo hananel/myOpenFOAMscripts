@@ -98,7 +98,7 @@ def create_machine_file():
         fd.writelines(x + '\n' for x in node_list)
     return machine_dir, machine_file
 
-def sfoam(main,tasks,target,progname): 
+def sfoam(main,tasks,target,progname,name): 
     atexit.register(cleanup)
     #test_re_matches()
     #raise SystemExit
@@ -115,20 +115,22 @@ def sfoam(main,tasks,target,progname):
             os.system("%(main)s --procnr=%(tasks)s --silent --machinefile=%(machine_file)s simpleFoam " % locals())
     else:
         print "calling salloc for OpenFOAM"
-        os.system("salloc -n %(tasks)s %(progname)s --n %(tasks)s --main %(main)s --target %(target)s" % locals())
+        os.system("salloc -J %(name)s -n %(tasks)s %(progname)s --n %(tasks)s --main %(main)s --target %(target)s" % locals())
 
 def main():
     parser = ArgumentParser()
     parser.add_argument('--main', default="pyFoamRunner.py", help="name of executable for salloc")
     parser.add_argument('--target', default=".", help="case directory. runs from local directory as default")
     parser.add_argument('--n', type=int, default=1, help='number of tasks')
+    parser.add_argument('--name', default='sfoam.py', help='task name')
     args = parser.parse_args(sys.argv[1:])
     main = args.main
     tasks = args.n
     target = args.target
     progname = sys.argv[0]
+    name = args.name
     print "main = %s, n = %s, target = %s" % (args.main, args.n, args.target)
-    sfoam(main=main, tasks=tasks, target=target, progname=progname)
+    sfoam(main=main, tasks=tasks, target=target, progname=progname, name=name)
 
 if __name__ == '__main__':
     main()

@@ -170,20 +170,31 @@ def main(target, yM, UM, flatFlag, plotSurface, show):
 
         # contour plot of cuttingPlane surface - middle of hill along flow direction
         if plotSurface:
-            fig = figure()
-            Nx, Ny = 251, 251
+            fig = figure(100+i)
+            Nx, Ny = 1000, 3000
             data = genfromtxt(dirName+'/surfaces/'+str(m)+'/U_cuttingPlane.raw',delimiter=' ')
-            xi = linspace(-100,100,Nx) # -2*h[i]*ARcurrent,2*h[i]*ARcurrent,Nx)
-            yi = linspace(0,3000) #0,h[i]*4,Ny)
+            xi = linspace(-1000,1000,Nx) # -2*h[i]*ARcurrent,2*h[i]*ARcurrent,Nx)
+            yi = linspace(0,2500,Ny) #0,h[i]*4,Ny)
             # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
             xmesh, ymesh = meshgrid(xi, yi) 
             if dirName.find('2D'):
                 zi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), data[:,3].ravel(), (xmesh,ymesh))
             else:
                 zi = sc.griddata((data[:,0].ravel(),data[:,2].ravel()), data[:,3].ravel(), (xmesh,ymesh))
-            CS = plt.contour(xi,yi,zi,[0, 0],linewidths=0.5,colors='k')
+            
             CS = plt.contourf(xi,yi,zi,400,cmap=plt.cm.jet,linewidths=0)
+            CS = plt.contour(xi,yi,zi,[0,0],color='k')
+           
             colorbar(CS)
+            if dirName.find('Martinez'):
+                import scipy.special as sp
+                A = 3.1926
+                H = y[0]         # [m]    
+                a = H*ARcurrent     # [m]
+                X = linspace(-a,a,101)    # [m]    
+                Y = - H * 1/6.04844 * ( sp.j0(A)*sp.i0(A*X/a) - sp.i0(A)*sp.j0(A*X/a) )
+                plt.fill(X,Y,'b')
+
             axis('equal')
             title(dirName)
             pdfSurface.savefig(fig)
