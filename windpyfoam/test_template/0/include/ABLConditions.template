@@ -1,0 +1,24 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+$$ x0 = us
+$$ x1 = Uref
+$$ x2 = Href
+$$ x3 = z0
+$$ x4 = xDirection
+$$ x5 = yDirection
+
+Ustar                $x0$;
+Uref                 $x1$;
+Href                 $x2$;
+z0                   $x3$;
+windDirection        ($x4$ $x5$ 0);
+zDirection           (0 0 1);
+zGround              uniform 0;
+
+// ************************************************************************* //
