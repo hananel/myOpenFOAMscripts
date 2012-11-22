@@ -65,7 +65,7 @@ def run3dHillBase(template0, AR, z0, us, caseType):
   	H = h
   	a = h*AR
 	#--------------------------------------------------------------------------------------
-	# cloaning case
+	# cloning case
 	#--------------------------------------------------------------------------------------
 	orig = 	SolutionDirectory(template0,
 			archive=None,
