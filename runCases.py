@@ -16,11 +16,7 @@ from PyFoam.Applications.Decomposer import Decomposer
 import time, shutil
 import sfoam
 
-def runCases(args):
-    case_dir = args.case_dir
-    runArg = args.runArg
-    n = args.n
-    cases = [x for x in glob('%s*' % os.path.join(os.getcwd(),case_dir)) if os.path.isdir(x)]
+def runCasesFiles(cases, run_arg, n):
     start = os.getcwd()
     for case in cases:
         os.chdir(case)
@@ -34,23 +30,23 @@ def runCases(args):
         # delete the header lines - ParsedParameterFile requires them, but the customRegexp dosen't seem to work when their around...
         lines = open(customRegexpName).readlines()
         open('customRegexp', 'w').writelines(lines[12:]) 
-        print args.n
+        print n
         #  if n>1 make sure case is decomposed into n processors
-        if args.n>1:
+        if n > 1:
             print "decomposing %(case)s" % locals()
             ClearCase(" --processors-remove %(case)s" % locals())
             Decomposer('--silent %(case)s %(n)s' % locals()) 
-    
+
     #print "sfoam debug:", repr(sys.argv)
     os.chdir(start)
 
     p = mp.Pool(len(cases))
     def start_loop():
-        print "args.runArg=%s" %args.runArg
+        print "runArg=%s" % runArg
         functions = {'plotRunner': run,
                      'Runner': runNoPlot,
                      'sfoam':runsfoam,}
-        func = functions[args.runArg]
+        func = functions[runArg]
         pool_run_cases(p, cases, n, func)
     try:
         start_loop()
@@ -60,6 +56,13 @@ def runCases(args):
             p.join()
         except KeyboardInterrupt:
             p.terminate()
+
+def runCases(args):
+    case_dir = args.case_dir
+    runArg = args.runArg
+    n = args.n
+    cases = [x for x in glob('%s*' % os.path.join(os.getcwd(), case_dir)) if os.path.isdir(x)]
+    runCasesFiles(cases=cases, runArg=runArg, n=n)
 
 def main():
     parser = argparse.ArgumentParser()
