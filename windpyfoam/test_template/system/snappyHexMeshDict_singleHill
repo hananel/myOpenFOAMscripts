@@ -35,20 +35,46 @@ geometry
         type triSurfaceMesh;
         name terrain;
     }
+   
+    upwindLayer
+    {
+        type searchablePlane;
+        planeType pointAndNormal;
+        pointAndNormalDict {
+            basePoint (-200 0 0.75);
+            normalVector (-1 0 0);
+        };
+    }
+    upwindbox1
+    {
+        type searchableBox;
+	    min (-200 -330 0.75);
+	    max (-175  330 20 );
+    }
+
 
     refinementBox1
     {
 	type searchableBox;
-	min (-400 -400 0); // xy limits > x0 +- 2a (Martinez 2011)
-	max (400 400 800); // z limit   > 4H
+	min (-150 -200 0); // xy limits > x0 +- 2a (Martinez 2011)
+	max (200 200 30); // z limit   > 4H
     }
     refinementBox2
     {
 	type searchableBox;
-	min (-260 -260 0); // xy limits > x0 +- 1.3a
-	max (260 260 400); // z limit   > 2H
+	min (-130 -130 0); // xy limits > x0 +- 1.3a
+	max (130 130 15); // z limit   > 2H
     }
-
+    
+    groundSurface
+    {
+        type searchablePlane;
+        planeType pointAndNormal;
+        pointAndNormalDict {
+            basePoint (0 0 0);
+            normalVector (0 0 1);
+        };
+    }
 };
 
 
@@ -90,7 +116,6 @@ castellatedMeshControls
     // 1 means normal 2:1 refinement restriction, larger means slower
     // refinement.
     nCellsBetweenLevels 1;
-
 
 
     // Explicit feature edge refinement
@@ -138,9 +163,10 @@ castellatedMeshControls
             //cellZone sphere;
             //cellZoneInside inside;  //outside/insidePoint
         }
+
     }
 
-    resolveFeatureAngle 90;
+    resolveFeatureAngle 20;
 
 
     // Region-wise refinement
@@ -159,6 +185,16 @@ castellatedMeshControls
     refinementRegions
     {
 
+    upwindLayer
+    {
+        mode distance;
+        levels ((25.0 1));
+    }
+    upwindbox1
+    {
+        mode inside;
+        levels ((1.0 4));
+    }
     refinementBox1
     {
 	mode inside;
@@ -170,7 +206,12 @@ castellatedMeshControls
 	mode inside;
 	levels ((1.0 2));
     }
-
+    
+    groundSurface
+    {
+        mode distance;
+        levels ((25.0 2) (50.0 1));
+    }
     }
 
 
@@ -182,7 +223,7 @@ castellatedMeshControls
     // section reachable from the locationInMesh is kept.
     // NOTE: This point should never be on a face, always inside a cell, even
     // after refinement.
-    locationInMesh (0 0 1111);
+    locationInMesh (0 0 111);
 
 
     // Whether any faceZones (as specified in the refinementSurfaces)
@@ -220,14 +261,18 @@ addLayersControls
 {
     // Are the thickness parameters below relative to the undistorted
     // size of the refined cell outside layer (true) or absolute sizes (false).
-    relativeSizes true;
+    relativeSizes false;
 
     // Per final patch (so not geometry!) the layer information
     layers
     {
         terrain_solid
         {
-            nSurfaceLayers 21;
+            nSurfaceLayers 11;
+        }
+        ground
+        {
+            nSurfaceLayers 11;
         }
     }
 
@@ -238,7 +283,7 @@ addLayersControls
     //- Wanted thickness of final added cell layer. If multiple layers
     //  is the thickness of the layer furthest away from the wall.
     //  See relativeSizes parameter.
-    finalLayerThickness 0.4;
+    finalLayerThickness 2;
 
     //- Minimum thickness of cell layer. If for any reason layer
     //  cannot be above minThickness do not add layer.
@@ -256,7 +301,7 @@ addLayersControls
 
     //- When not to extrude surface. 0 is flat surface, 90 is when two faces
     //  make straight angle.
-    featureAngle 90;
+    featureAngle 180;
 
     //- Maximum number of snapping relaxation iterations. Should stop
     //  before upon reaching a correct mesh.
@@ -289,7 +334,7 @@ addLayersControls
     // Overall max number of layer addition iterations. The mesher will exit
     // if it reaches this number of iterations; possibly with an illegal
     // mesh.
-    nLayerIter 50;
+    nLayerIter 100;
 
     // Max number of iterations after which relaxed meshQuality controls
     // get used. Up to nRelaxIter it uses the settings in meshQualityControls,

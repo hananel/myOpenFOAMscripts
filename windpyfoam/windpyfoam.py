@@ -55,11 +55,6 @@ run3dHillBase contains the BC (Boundary Condition) code (run3dHillBase.py:run3dH
 
 """
 
-"""
-TODO:
-we changed inputDict["SHMParams"]["cellSize"]["cellYfactor"] to cell_size from wind_dict, is that wise?
-"""
-
 import sys
 import os
 import multiprocessing
@@ -90,30 +85,26 @@ def status(x):
 
 def create_block_mesh_dict(work, wind_dict, params):
     phi = params['phi']
-    cell_size = params['cell_size']
+    cell_size = params["cell_size"]
     SHM = wind_dict["SHMParams"]
     Href = SHM["domainSize"]["domZ"]
     domainSize = SHM["domainSize"]
-    l, d = domainSize["fX"], domainSize["fY"]
-    cell = SHM["cellSize"]["cell"]
+    lup, ldown, d = domainSize["fXup"], domainSize["fXdown"], domainSize["fY"]
     x0, y0 = (SHM["centerOfDomain"]["x0"],
-              SHM["centerOfDomain"]["x0"])
+              SHM["centerOfDomain"]["y0"])
     sin_phi = sin(phi)
     cos_phi = cos(phi)
-    x1 = x0 - (l / 2 * sin_phi + d / 2 * cos_phi)
-    y1 = y0 - (l / 2 * cos_phi - d / 2 * sin_phi)
-    x2 = x0 - (l / 2 * sin_phi - d / 2 * cos_phi)
-    y2 = y0 - (l / 2 * cos_phi + d / 2 * sin_phi)
-    x3 = x0 + (l / 2 * sin_phi + d / 2 * cos_phi)
-    y3 = y0 + (l / 2 * cos_phi - d / 2 * sin_phi)
-    x4 = x0 + (l / 2 * sin_phi - d / 2 * cos_phi)
-    y4 = y0 + (l / 2 * cos_phi + d / 2 * sin_phi)
-    n = floor(d / (cell * cell_size))
-    m = floor(l / (cell * cell_size))
-    q = floor((Href + 450.0) / cell) # -450 is the minimum of the
-                                     # blockMeshDict.template - since that is
-                                     # slightly lower then the lowest point
-                                     # on the planet
+    x1 = x0 - (ldown * sin_phi + d / 2 * cos_phi)
+    y1 = y0 - (ldown * cos_phi - d / 2 * sin_phi)
+    x2 = x0 - (ldown * sin_phi - d / 2 * cos_phi)
+    y2 = y0 - (ldown * cos_phi + d / 2 * sin_phi)
+    x3 = x0 + (lup * sin_phi + d / 2 * cos_phi)
+    y3 = y0 + (lup * cos_phi - d / 2 * sin_phi)
+    x4 = x0 + (lup * sin_phi - d / 2 * cos_phi)
+    y4 = y0 + (lup * cos_phi + d / 2 * sin_phi)
+    n = floor(d / cell_size)
+    m = floor((lup+ldown) / cell_size)
+    q = floor((Href - domainSize["z_min"]) / cell_size)
     if n == 0 or m == 0 or q == 0:
         print "invalid input to block mesh dict:"
         print "d = %(d)f, l = %(l)f, Href = %(Href)f, cell = %(cell)f, cell_size = %(cell_size)f" % locals()
@@ -124,7 +115,7 @@ def create_block_mesh_dict(work, wind_dict, params):
     template.writeToFile(bmName,
         {'X0':x1,'X1':x2,'X2':x3,'X3':x4,
          'Y0':y1,'Y1':y2,'Y2':y3,'Y3':y4,
-         'Z0':Href,'n':int(n),'m':int(m),'q':int(q)})
+         'Z0':Href,'n':int(n),'m':int(m),'q':int(q), 'z_min':domainSize["z_min"]})
 
 def create_SHM_dict(work, wind_dict, params):
     print "calculating SHM parameters"
@@ -133,7 +124,9 @@ def create_SHM_dict(work, wind_dict, params):
     domainSize = SHM['domainSize']
     a = domainSize['refinement_length']
     H = domainSize['typical_height']
-    cell = SHM["cellSize"]["cell"]
+    Href = SHM["domainSize"]["domZ"]
+    cell_size = params['cell_size'] # blockMesh cell size
+    z_cells = floor((Href - domainSize["z_min"]) / cell_size)
     zz = SHM["pointInDomain"]["zz"]
     x0, y0 = (SHM["centerOfDomain"]["x0"],
               SHM["centerOfDomain"]["x0"])
@@ -160,6 +153,17 @@ def create_SHM_dict(work, wind_dict, params):
     assert(refBox2_minz < refBox2_maxz)
     
     # changing snappyHexMeshDict - with parsedParameterFile
+
+    # case 1 - an stl file describing a rectangular domain larger then the blockMesh control volume
+    if SHM["rectanguleDoaminSTL"]:
+        shutil.copyfile(path.join(work.systemDir(), "snappyHexMeshDict_rectanguleDomain"), \
+                    path.join(work.systemDir(), "snappyHexMeshDict"))
+    # case 2 - an stl file describing a single hill, with edges at z_min
+    else:
+         shutil.copyfile(path.join(work.systemDir(), "snappyHexMeshDict_singleHill"), \
+                    path.join(work.systemDir(), "snappyHexMeshDict"))
+
+    # changes that apply to both cases    
     SHMDict = ParsedParameterFile(
         path.join(work.systemDir(), "snappyHexMeshDict"))
     SHMDict["geometry"]["refinementBox1"]["min"] = \
@@ -181,7 +185,7 @@ def create_SHM_dict(work, wind_dict, params):
     # calculating finalLayerRatio for getting 
     zp_z0 = SHM["cellSize"]["zp_z0"]
     firstLayerSize = 2 * zp_z0 * z0
-    L = log(fLayerRatio/firstLayerSize*cell/2**levelRef) / log(r) + 1
+    L = log(fLayerRatio/firstLayerSize*z_cells/2**levelRef) / log(r) + 1
     SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
     SHMDict.writeFile()
 
@@ -322,7 +326,7 @@ def wind_rose_params_generator(wind_dict):
     """
     windRose = wind_dict['caseTypes']["windRose"]
     template = read_dict_string(wind_dict, 'template')
-    cell_size = windRose['cellSize']
+    cell_size = windRose['blockMeshCellSize']
     for i, (_weight, wind_dir) in enumerate(windRose['windDir']):
         case_dir = os.path.join(wind_dict['runs'],
                             '%(template)s_rose_%(wind_dir)s' % locals())

@@ -20,7 +20,6 @@ def runCasesFiles(cases, runArg, n):
     start = os.getcwd()
     for case in cases:
         os.chdir(case)
-        pyFoamClearCases --processors
         # change customeRegexp
         customRegexpName = "customRegexp.base"
         shutil.copy('/home/hanan/bin/OpenFOAM/customRegexp.base',case)
