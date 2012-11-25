@@ -1,0 +1,8 @@
+windPyFoam README
+=================
+
+windPyFoam runs wind simulations using pyfoam.
+
+run ./windPyFoam --help for short help.
+
+see doc string for longer help.

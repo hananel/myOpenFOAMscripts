@@ -1,0 +1,2 @@
+Thu Nov 22 10:44:43 2012 by hanan in hanan220 :Application: pyFoamDecompose.py . 10  | with cwd /home/hanan/OpenFOAM/hanan-2.1.1/run/phd/5Z0Influence/3DMartinez/Martinez3DAR1MeshMaster  |  
+Thu Nov 22 12:37:43 2012 by hanan in hanan220 :Application: pyFoamClearCase.py --processors-remove test_template  | with cwd /home/hanan/bin/OpenFOAM/windpyfoam  |  

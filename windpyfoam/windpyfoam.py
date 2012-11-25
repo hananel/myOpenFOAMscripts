@@ -62,10 +62,12 @@ we changed inputDict["SHMParams"]["cellSize"]["cellYfactor"] to cell_size from w
 
 import sys
 import os
-from os import path
-from math import pi, sin, cos, floor, log, sqrt
 import multiprocessing
 import itertools
+import glob
+from datetime import datetime
+from os import path
+from math import pi, sin, cos, floor, log, sqrt
 from argparse import ArgumentParser
 
 from PyFoam.RunDictionary.SolutionDirectory     import SolutionDirectory
@@ -140,14 +142,22 @@ def create_SHM_dict(work, wind_dict, params):
     l1, l2, h1, h2 = 2*a, 1.3*a, 4*H, 2*H # refinement rules - Martinez 2011
     sp = sin(phi)
     cp = cos(phi)
-    refBox1_minx, refBox1_miny, refBox1_minz = \
-        x0 - l1*(sp+cp), y0 - l1*(cp-sp), 0 #enlarging to take acount of the rotation angle
-    refBox1_maxx, refBox1_maxy, refBox1_maxz = \
-        x0 + l1*(sp+cp), y0 + l1*(cp-sp), h1 #enlarging to take acount of the rotation angle
-    refBox2_minx, refBox2_miny, refBox2_minz = \
-        x0 - l2*(sp+cp), y0 - l2*(cp-sp), 0 #enlarging to take acount of the rotation angle
-    refBox2_maxx, refBox2_maxy, refBox2_maxz = \
-        x0 + l2*(sp+cp), y0 + l2*(cp-sp),h2 #enlarging to take acount of the rotation angle
+    #enlarging to take acount of the rotation angle
+    def calc_box(l, h):
+        tx1, ty1, tz1 = x0 - l1*(sp+cp), y0 - l1*(cp-sp), 0
+        tx2, ty2, tz2 = x0 + l1*(sp+cp), y0 + l1*(cp-sp), h1
+        return (min(tx1, tx2), min(ty1, ty2), min(tz1, tz2),
+                max(tx1, tx2), max(ty1, ty2), max(tz1, tz2))
+    (refBox1_minx, refBox1_miny, refBox1_minz,
+     refBox1_maxx, refBox1_maxy, refBox1_maxz) = calc_box(l1, h1)
+    (refBox2_minx, refBox2_miny, refBox2_minz,
+     refBox2_maxx, refBox2_maxy, refBox2_maxz) = calc_box(l2, h2)
+    assert(refBox1_minx < refBox1_maxx)
+    assert(refBox1_miny < refBox1_maxy)
+    assert(refBox1_minz < refBox1_maxz)
+    assert(refBox2_minx < refBox2_maxx)
+    assert(refBox2_miny < refBox2_maxy)
+    assert(refBox2_minz < refBox2_maxz)
     
     # changing snappyHexMeshDict - with parsedParameterFile
     SHMDict = ParsedParameterFile(
@@ -264,12 +274,15 @@ def create_case(wind_dict, params):
     status('running decompose')
     run_decompose(work, wind_dict)
     status('running snappy hex mesh')
-    run_SHM(work)
+    run_SHM(work, wind_dict)
     status('running second decompose')
     run_decompose(work, wind_dict)
     return work
 
 def run_decompose(work, wind_dict):
+    if wind_dict['procnr'] < 2:
+        status('skipped decompose')
+        return
     Decomposer(args=[work.name, wind_dict['procnr']])
 
 def run_block_mesh(work):
@@ -279,9 +292,11 @@ def run_block_mesh(work):
     blockRun.start()
     if not blockRun.runOK(): error("there was an error with blockMesh")
 
-def run_SHM(work):
+def run_SHM(work, wind_dict):
     # TODO - add parallel runs!
-    SHMrun = BasicRunner(argv=["snappyHexMesh",'-overwrite','-case',work.name],
+    # '-parallel', '-procnr', str(wind_dict['procnr'])
+    SHMrun = BasicRunner(argv=["snappyHexMesh",
+                               '-overwrite','-case',work.name],
                          server=False,logname="SHM")
     print "Running SHM"
     SHMrun.start()
@@ -295,7 +310,8 @@ def grid_convergance_params_generator(wind_dict):
     template = read_dict_string(wind_dict, 'template')
     wind_dir = grid_convergence['windDir']
     for i, cell_size in enumerate(gridRange):
-        case_dir = os.path.join('runs','%(template)s_%(cell_size)s' % locals())
+        case_dir = os.path.join(wind_dict['runs'],
+                            '%(template)s_grid_%(cell_size)s' % locals())
         yield dict(case_dir=case_dir, wind_dir=wind_dir, cell_size=cell_size,
                    name='grid_convergence %d: cell_size=%d, wind_dir=%d' % (i, cell_size, wind_dir))
 
@@ -304,13 +320,28 @@ def wind_rose_params_generator(wind_dict):
     yields names of case directories
     one for each direction from wind rose
     """
-    windRose = wind_dict["windRose"]
-    template = wind_dict['template']
-    cell_size = wind_dict['cell_size']
-    for i, (_weight, wind_dir) in enumerate(windRose):
-        case_dir = os.path.join('runs', '%(template)s_%(wind_dir)s' % locals())
+    windRose = wind_dict['caseTypes']["windRose"]
+    template = read_dict_string(wind_dict, 'template')
+    cell_size = windRose['cellSize']
+    for i, (_weight, wind_dir) in enumerate(windRose['windDir']):
+        case_dir = os.path.join(wind_dict['runs'],
+                            '%(template)s_rose_%(wind_dir)s' % locals())
         yield dict(case_dir = case_dir, wind_dir = wind_dir, cell_size = cell_size,
                    name='wind_rose %d: cell_size=%d, wind_dir=%d' % (i, cell_size, wind_dir))
+
+def run_directory(prefix):
+    now = datetime.now()
+    pristine = now.strftime(prefix + '_%Y%m%d_%H%M%S')
+    if os.path.exists(pristine):
+        if os.path.exists(pristine + '_1'):
+            last = max([try_int(x.rsplit('_', 1)[0])
+                        for x in glob(pristine + '_*')])
+            d = pristine + '_%d' % (last + 1)
+        else:
+            d = pristine + '_1'
+    else:
+        d = pristine
+    return d
 
 def main(conf):
     """
@@ -351,7 +382,9 @@ def main(conf):
         print "failed to parse windPyFoam parameter file:"
         print e
         raise SystemExit
+    wind_dict['runs'] = run_directory('runs')
     # running the grid convergence routine - for 1 specific direction
+    gen = []
     if wind_dict["caseTypes"]["gridConvergence"]:
         gen = grid_convergance_params_generator(wind_dict)
     gen = itertools.chain(gen,
@@ -362,8 +395,10 @@ def main(conf):
         work = create_case(wind_dict, params)
         cases.append(work)
     # TODO: customizable runArg
+    status('RUNNING CASES')
     runCases(n=wind_dict['procnr'], runArg='Runner',
              cases=[case.name for case in cases])
+    status('DONE')
 
 # 5/
 

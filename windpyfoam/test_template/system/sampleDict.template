@@ -1,0 +1,100 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.7.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+    class           dictionary;
+    location        system;
+    object          sampleDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+$$ x0 = hillTopY
+$$ x1 = sampleHeightAbovePlain
+$$ x2 = sampleHeightAboveHill
+$$ x3 = inletX
+
+// Set output format : choice of
+//      xmgr
+//      jplot
+//      gnuplot
+//      raw
+setFormat raw;
+
+// SurFace output format. Choice of
+//      null        : suppress output
+//      foamFile    : separate points, midPointAndFaces and values file
+//      dx          : DX scalar or vector format
+//      vtk         : VTK ascii format
+//      raw         : x y z value format for use with e.g. gnuplot 'splot'.
+//
+// Note:
+// other formats such as obj, stl, etc can also be written (by proxy)
+// but without any values!
+surfaceFormat vtk;
+
+// interpolationScheme. choice of
+//      cell          : use cell-centre value only; constant over cells (default)
+//      cellPoint     : use cell-centre and vertex values
+//      cellPointmidPointAndFace : use cell-centre, vertex and midPointAndFace values.
+// 1] vertex values determined from neighbouring cell-centre values
+// 2] midPointAndFace values determined using the current midPointAndFace interpolation scheme
+//    for the field (linear, gamma, etc.)
+interpolationScheme cellPoint;
+
+// Fields to sample.
+fields
+(
+   k
+   U
+   nut
+   p
+   epsilon
+);
+
+
+sets
+(
+	
+    line_inlet
+    {
+        type        uniform;
+        axis        z;
+        start       (-$x3$	0		0);
+        end         (-$x3$	0		$x1$);
+        nPoints     5000;
+    }
+
+    line_y
+    {
+        type        uniform;
+        axis        z;
+        start       (0 		0		$x0$);
+        end         (0 		0		$x2$);
+        nPoints     5000;
+    }
+
+);
+
+
+// SurmidPointAndFace sampling definition: choice of
+//      plane : values on plane defined by point, normal.
+//      patch : values on patch.
+//
+// 1] patches are not triangulated by default
+// 2] planes are always triangulated
+// 3] iso-surmidPointAndFaces are always triangulated
+surfaces
+(
+);
+
+
+// *********************************************************************** //

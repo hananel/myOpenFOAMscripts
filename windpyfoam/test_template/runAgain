@@ -1,0 +1,11 @@
+#!/bin/bash
+cd constant
+cd polyMesh
+rm -r `echo *| tr ' ' '\n' | grep -v '^blockMeshDict$'`
+cd ..
+cd ..
+blockMesh
+snappyHexMesh -overwrite
+checkMesh
+pyFoamCaseReport.py --case-size .
+paraview --state="prismView.pvsm"

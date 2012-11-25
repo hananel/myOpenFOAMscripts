@@ -1,0 +1,15 @@
+GUI
+ Using pyFoamPlotWatcher.py as a base, present plots during runtime
+
+Control of processor number
+ make sure exactly nprocs are used:
+  during runCases, use nproc queues, instead of running all cases in paralle.
+
+QueueProc:
+ while cases.pop() as case:
+  runCase(case)
+
+def runCases(cases, nproc)
+    # cases is a thread safe queue (multiprocessing.queue)
+    for i in xrange(nprocs):
+        startThread(QueueProc, cases)

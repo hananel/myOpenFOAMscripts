@@ -16,10 +16,11 @@ from PyFoam.Applications.Decomposer import Decomposer
 import time, shutil
 import sfoam
 
-def runCasesFiles(cases, run_arg, n):
+def runCasesFiles(cases, runArg, n):
     start = os.getcwd()
     for case in cases:
         os.chdir(case)
+        pyFoamClearCases --processors
         # change customeRegexp
         customRegexpName = "customRegexp.base"
         shutil.copy('/home/hanan/bin/OpenFOAM/customRegexp.base',case)
@@ -73,8 +74,12 @@ def main():
     runCases(args)
 
 def pool_run_cases(p, cases, n, f):
+    if n > 1:
+        procnr_args = '--procnr %s' % n
+    else:
+        procnr_args = ''
     args = list(enumerate([(case,
-               ("--progress --procnr %(n)s simpleFoam -case %(case)s" % locals()).split())
+               ("--progress %(procnr_args)s simpleFoam -case %(case)s" % locals()).split())
                for case in cases]))
     for result in p.imap_unordered(f, args):
         print "%s: got %s" % (f.func_name, result)
