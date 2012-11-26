@@ -185,11 +185,6 @@ castellatedMeshControls
     refinementRegions
     {
 
-    upwindLayer
-    {
-        mode distance;
-        levels ((25.0 1));
-    }
     upwindbox1
     {
         mode inside;

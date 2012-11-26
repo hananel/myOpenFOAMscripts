@@ -49,19 +49,14 @@ geometry
 	max (100 100 25); // z limit   > 2H
     }
 
-    refinementInlet
+    upwindbox1
     {
         type searchableBox;
-        min (-200 -330 0);
-        max (-180  330 10);
+	    min (-200 -330 0.75);
+	    max (-175  330 20 );
     }
-    
-    refinementOutlet
-    {
-        type searchableBox;
-        min (980 -330 0);
-        max (1000  330 10);
-    }
+
+
 };
 
 
@@ -184,17 +179,12 @@ castellatedMeshControls
 	levels ((1.0 2));
     }
     
-    refinementInlet
+    upwindbox1
     {
         mode inside;
-        levels ((1.0 2));
+        levels ((1.0 4));
     }
-
-    refinementOutlet
-    {
-        mode inside;
-        levels ((1.0 2));
-    }
+ 
 
     }
 

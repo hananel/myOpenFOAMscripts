@@ -46,31 +46,29 @@ simParams
 {
    	yM			20;
    	UM			5;
-   	z0			0.03;
+   	z0			0.0015;
    	caseType	notSHM;
 };
 
 SHMParams
 {
-    rectanguleDoaminSTL 1;
+    rectanguleDomainSTL 0;
 
     cellSize
 	{
 		fLayerRatio 0.3;
-		levelRef	3;
+		levelRef	2;
 		layers		6;
-		r			1.2;
+		r			1.06;
 		zp_z0		13.5; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
 	}
 	domainSize
 	{
-		// fXup controlls the upstream size (relative to x0,y0) and fXdown controlls the downstream size 
 		refinement_length 100;
         typical_height 12;
-        fX			1000; // obsolete
 		fXup		300;  // upwind fetch
 		fXdown		700; // downwind fetch
-		fY		800; // dom_y = fX * a
+		fY		400; // dom_y = fX * a
 		domZ	120; // = Href
         z_min   0;
 	}

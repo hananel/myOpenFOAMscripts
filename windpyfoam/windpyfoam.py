@@ -60,6 +60,7 @@ import os
 import multiprocessing
 import itertools
 import glob
+import shutil
 from datetime import datetime
 from os import path
 from math import pi, sin, cos, floor, log, sqrt
@@ -94,14 +95,14 @@ def create_block_mesh_dict(work, wind_dict, params):
               SHM["centerOfDomain"]["y0"])
     sin_phi = sin(phi)
     cos_phi = cos(phi)
-    x1 = x0 - (ldown * sin_phi + d / 2 * cos_phi)
-    y1 = y0 - (ldown * cos_phi - d / 2 * sin_phi)
-    x2 = x0 - (ldown * sin_phi - d / 2 * cos_phi)
-    y2 = y0 - (ldown * cos_phi + d / 2 * sin_phi)
-    x3 = x0 + (lup * sin_phi + d / 2 * cos_phi)
-    y3 = y0 + (lup * cos_phi - d / 2 * sin_phi)
-    x4 = x0 + (lup * sin_phi - d / 2 * cos_phi)
-    y4 = y0 + (lup * cos_phi + d / 2 * sin_phi)
+    x1 = x0 - (lup * sin_phi + d / 2 * cos_phi)
+    y1 = y0 - (lup * cos_phi - d / 2 * sin_phi)
+    x2 = x0 - (lup * sin_phi - d / 2 * cos_phi)
+    y2 = y0 - (lup * cos_phi + d / 2 * sin_phi)
+    x3 = x0 + (ldown * sin_phi + d / 2 * cos_phi)
+    y3 = y0 + (ldown * cos_phi - d / 2 * sin_phi)
+    x4 = x0 + (ldown * sin_phi - d / 2 * cos_phi)
+    y4 = y0 + (ldown * cos_phi + d / 2 * sin_phi)
     n = floor(d / cell_size)
     m = floor((lup+ldown) / cell_size)
     q = floor((Href - domainSize["z_min"]) / cell_size)
@@ -126,7 +127,7 @@ def create_SHM_dict(work, wind_dict, params):
     H = domainSize['typical_height']
     Href = SHM["domainSize"]["domZ"]
     cell_size = params['cell_size'] # blockMesh cell size
-    z_cells = floor((Href - domainSize["z_min"]) / cell_size)
+    z_cell = cell_size
     zz = SHM["pointInDomain"]["zz"]
     x0, y0 = (SHM["centerOfDomain"]["x0"],
               SHM["centerOfDomain"]["x0"])
@@ -137,8 +138,8 @@ def create_SHM_dict(work, wind_dict, params):
     cp = cos(phi)
     #enlarging to take acount of the rotation angle
     def calc_box(l, h):
-        tx1, ty1, tz1 = x0 - l1*(sp+cp), y0 - l1*(cp-sp), 0
-        tx2, ty2, tz2 = x0 + l1*(sp+cp), y0 + l1*(cp-sp), h1
+        tx1, ty1, tz1 = x0 - l*(sp+cp), y0 - l*(cp-sp), domainSize["z_min"]
+        tx2, ty2, tz2 = x0 + l*(sp+cp), y0 + l*(cp-sp), h
         return (min(tx1, tx2), min(ty1, ty2), min(tz1, tz2),
                 max(tx1, tx2), max(ty1, ty2), max(tz1, tz2))
     (refBox1_minx, refBox1_miny, refBox1_minz,
@@ -155,17 +156,18 @@ def create_SHM_dict(work, wind_dict, params):
     # changing snappyHexMeshDict - with parsedParameterFile
 
     # case 1 - an stl file describing a rectangular domain larger then the blockMesh control volume
-    if SHM["rectanguleDoaminSTL"]:
+    if SHM["rectanguleDomainSTL"]:
         shutil.copyfile(path.join(work.systemDir(), "snappyHexMeshDict_rectanguleDomain"), \
                     path.join(work.systemDir(), "snappyHexMeshDict"))
     # case 2 - an stl file describing a single hill, with edges at z_min
     else:
          shutil.copyfile(path.join(work.systemDir(), "snappyHexMeshDict_singleHill"), \
                     path.join(work.systemDir(), "snappyHexMeshDict"))
-
+         
     # changes that apply to both cases    
     SHMDict = ParsedParameterFile(
         path.join(work.systemDir(), "snappyHexMeshDict"))
+    # changing refinement boxes around center reigon
     SHMDict["geometry"]["refinementBox1"]["min"] = \
         "("+str(refBox1_minx)+" "+str(refBox1_miny)+" "+str(refBox1_minz)+")"
     SHMDict["geometry"]["refinementBox1"]["max"] = \
@@ -174,10 +176,34 @@ def create_SHM_dict(work, wind_dict, params):
         "("+str(refBox2_minx)+" "+str(refBox2_miny)+" "+str(refBox2_minz)+")"
     SHMDict["geometry"]["refinementBox2"]["max"] = \
         "("+str(refBox2_maxx)+" "+str(refBox2_maxy)+" "+str(refBox2_maxz)+")"
+    # changing inlet refinement reigon - crude correction to SHM layer fault at domain edges
+    lup, ldown, d = domainSize["fXup"], domainSize["fXdown"], domainSize["fY"]
+    x1 = x0 - (lup * sp + d / 2 * cp)
+    y1 = y0 - (lup * cp - d / 2 * sp)
+    x3 = x0 - ((lup - cell_size) * sp + d / 2 * cp)
+    y3 = y0 - ((lup - cell_size) * cp - d / 2 * sp)
+ 
+    SHMDict["geometry"]["upwindbox1"]["min"] = \
+        "("+str(min(x1,x3))+" "+str(min(y1,y3))+" "+str(domainSize["z_min"])+")"
+    SHMDict["geometry"]["upwindbox1"]["max"] = \
+        "("+str(max(x1,x3))+" "+str(max(y1,y3))+" "+str(domainSize["z_min"]+cell_size)+")"
+    """x1 = x0 + (ldown * sp + d / 2 * cp)
+    y1 = y0 + (ldown * cp - d / 2 * sp)
+    x3 = x0 + ((ldown - cell_size) * sp - d / 2 * cp)
+    y3 = y0 + ((ldown - cell_size) * cp + d / 2 * sp)
+ 
+    SHMDict["geometry"]["refinementOutlet"]["min"] = \
+        "("+str(min(x1,x3))+" "+str(min(y1,y3))+" "+str(domainSize["z_min"])+")"
+    SHMDict["geometry"]["refinementOutlet"]["max"] = \
+        "("+str(max(x1,x3))+" "+str(max(y1,y3))+" "+str(domainSize["z_min"]+cell_size)+")"
+    """
+    # changing location in mesh
     SHMDict["castellatedMeshControls"]["locationInMesh"] = "("+str(x0)+" "+str(y0)+" "+str(zz)+")"
     levelRef = SHM["cellSize"]["levelRef"]
     SHMDict["castellatedMeshControls"]["refinementSurfaces"]["terrain"]["level"] = \
         "("+str(levelRef)+" "+str(levelRef)+")"
+    SHMDict["castellatedMeshControls"]["refinementRegions"]["upwindbox1"]["level"] =  \
+        "("+str(levelRef * 2)+" "+str(levelRef * 2)+")"
     r = SHM["cellSize"]["r"]
     SHMDict["addLayersControls"]["expansionRatio"] = r
     fLayerRatio = SHM["cellSize"]["fLayerRatio"]
@@ -185,10 +211,20 @@ def create_SHM_dict(work, wind_dict, params):
     # calculating finalLayerRatio for getting 
     zp_z0 = SHM["cellSize"]["zp_z0"]
     firstLayerSize = 2 * zp_z0 * z0
-    L = log(fLayerRatio/firstLayerSize*z_cells/2**levelRef) / log(r) + 1
-    SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
+    L = log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1
+    SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))    
+    
+    # changes that apply only to case 2
+    if not(SHM["rectanguleDomainSTL"]):
+        SHMDict["geometry"]["groundSurface"]["pointAndNormalDict"]["basePoint"] = \
+            "( 0 0 "+str(domainSize["z_min"])+")" 
+        SHMDict["castellatedMeshControls"]["refinementRegions"]["groundSurface"]["levels"] = \
+            "(("+str(h2)+" "+str(levelRef)+") ("+str(h1)+" "+str(int(round(levelRef/2)))+"))"
+        SHMDict["addLayersControls"]["layers"]["ground"]["nSurfaceLayers"] = int(round(L))
     SHMDict.writeFile()
 
+        
+        
 def create_boundary_conditions_dict(work, wind_dict, params):
     #--------------------------------------------------------------------------------------
     # changing inlet profile - - - - according to Martinez 2010
@@ -265,7 +301,7 @@ def create_case(wind_dict, params):
         warn('wind_dict contains a higher processor number then the machine has')
         wind_dict['procnr'] = min(wind_dict['procnr'], multiprocessing.cpu_count())
     phi = params['wind_dir'] * pi / 180
-    params['phi'] = phi - pi/180 * 90
+    params['phi'] = phi # - pi/180 * 90
 
     status('creating block mesh dictionary')
     create_block_mesh_dict(work, wind_dict, params)
