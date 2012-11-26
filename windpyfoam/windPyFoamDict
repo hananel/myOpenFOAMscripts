@@ -1,0 +1,104 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.1.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version         2.0;
+    format          ascii;
+    class           dictionary;
+    location        system;
+    object          windPyFoamDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Wind Py Foam specific parameters.
+
+template "/home/hanan/bin/OpenFOAM/windpyfoam/test_template";
+procnr 1;
+
+caseTypes
+{
+    gridConvergence 0;
+    gridConvergenceParams
+    {
+        gridRange (1 2 3 4 5);
+        windDir 30;
+    }
+    windRose
+    {
+        blockMeshCellSize 20;
+        /* weight [0, 1.0], direction [0, 360.0] */
+        windDir (
+            (0.5 0)
+            (0.5 90)
+        );
+    };
+};
+
+// simulation parameters
+simParams
+{
+   	yM			20;
+   	UM			5;
+   	z0			0.03;
+   	caseType	notSHM;
+};
+
+SHMParams
+{
+    rectanguleDoaminSTL 1;
+
+    cellSize
+	{
+		fLayerRatio 0.3;
+		levelRef	3;
+		layers		6;
+		r			1.2;
+		zp_z0		13.5; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
+	}
+	domainSize
+	{
+		// fXup controlls the upstream size (relative to x0,y0) and fXdown controlls the downstream size 
+		refinement_length 100;
+        typical_height 12;
+        fX			1000; // obsolete
+		fXup		300;  // upwind fetch
+		fXdown		700; // downwind fetch
+		fY		800; // dom_y = fX * a
+		domZ	120; // = Href
+        z_min   0;
+	}
+	pointInDomain
+	{
+		zz		111;
+	}
+	centerOfDomain
+	{
+		x0		0;
+		y0		0;
+	}
+	flowOrigin
+	{
+		deg	90;
+	}
+};
+
+kEpsParams
+{
+	Cmu		0.03;	// castro 96
+	k		0.4;
+};
+
+sampleParams
+{
+	hSample	10;
+};
+
+// *********************************************************************** //
+
