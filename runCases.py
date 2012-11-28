@@ -102,13 +102,13 @@ def runCasesFiles(cases, runArg, n):
         customRegexpFile.writeFile()
         # delete the header lines - ParsedParameterFile requires them, but the customRegexp dosen't seem to work when their around...
         lines = open(customRegexpName).readlines()
-        open('customRegexp', 'w').writelines(lines[12:]) 
+        open('customRegexp', 'w').writelines(lines[12:])
         print n
         #  if n>1 make sure case is decomposed into n processors
         if n > 1:
             print "decomposing %(case)s" % locals()
             ClearCase(" --processors-remove %(case)s" % locals())
-            Decomposer('--silent %(case)s %(n)s' % locals()) 
+            Decomposer('--silent %(case)s %(n)s' % locals())
 
     #print "sfoam debug:", repr(sys.argv)
     os.chdir(start)
@@ -172,7 +172,7 @@ def runsfoam((i, (target, args))):
     n = args.pop(5) # that's where n gets stored
     print "sfoam - chdir to %s" % os.getcwd()
     print "calling sfoam target=%r" % target
-    return sfoam.sfoam(main="pyFoamRunner.py", tasks=n, target=target, progname="/home/hanan/bin/OpenFOAM/sfoam.py") 
+    return sfoam.sfoam(main="pyFoamRunner.py", tasks=n, target=target, progname="/home/hanan/bin/OpenFOAM/sfoam.py")
 
 if __name__ == '__main__':
     main()

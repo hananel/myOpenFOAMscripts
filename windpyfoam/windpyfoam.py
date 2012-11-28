@@ -417,7 +417,7 @@ def main(conf):
      but --> already at this stage i have to work in a loop according to the
      amount of cases i am asked to solve. each case will be cloned from the
      template case, and then the procedure of
-     if doing grid convergance with a single 
+     if doing grid convergance with a single
      foreach dir in {winddirs, grid}:
          1. creating snappyHexMeshDict and blockMeshdict according to flow direction and other parameters
          2. creating the blockMesh
