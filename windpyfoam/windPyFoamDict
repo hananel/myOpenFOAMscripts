@@ -19,7 +19,7 @@ FoamFile
 
 // Wind Py Foam specific parameters.
 
-template "/home/hanan/bin/OpenFOAM/windpyfoam/test_template";
+template "test_template";
 procnr 2;
 
 caseTypes
