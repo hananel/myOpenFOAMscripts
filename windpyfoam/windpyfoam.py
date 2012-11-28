@@ -51,7 +51,7 @@ template = TemplateFile(selected_template_file)
 template.writeToFile(temp_file_name, {parameters from windFile})
 
 run3dHillBase contains the BC (Boundary Condition) code (run3dHillBase.py:run3dHillBase).
- - read from template 
+ - read from template
 
 """
 
@@ -155,7 +155,7 @@ def create_SHM_dict(work, wind_dict, params):
     assert(refBox2_minx < refBox2_maxx)
     assert(refBox2_miny < refBox2_maxy)
     assert(refBox2_minz < refBox2_maxz)
-    
+
     # changing snappyHexMeshDict - with parsedParameterFile
 
     # case 1 - an stl file describing a rectangular domain larger then the blockMesh control volume
@@ -166,8 +166,8 @@ def create_SHM_dict(work, wind_dict, params):
     else:
          shutil.copyfile(path.join(work.systemDir(), "snappyHexMeshDict_singleHill"), \
                     path.join(work.systemDir(), "snappyHexMeshDict"))
-         
-    # changes that apply to both cases    
+
+    # changes that apply to both cases
     SHMDict = ParsedParameterFile(
         path.join(work.systemDir(), "snappyHexMeshDict"))
     # changing refinement boxes around center reigon
@@ -185,7 +185,7 @@ def create_SHM_dict(work, wind_dict, params):
     y1 = y0 - (lup * cp - d / 2 * sp)
     x3 = x0 - ((lup - cell_size) * sp + d / 2 * cp)
     y3 = y0 - ((lup - cell_size) * cp - d / 2 * sp)
- 
+
     SHMDict["geometry"]["upwindbox1"]["min"] = \
         "("+str(min(x1,x3))+" "+str(min(y1,y3))+" "+str(domainSize["z_min"])+")"
     SHMDict["geometry"]["upwindbox1"]["max"] = \
@@ -194,7 +194,7 @@ def create_SHM_dict(work, wind_dict, params):
     y1 = y0 + (ldown * cp - d / 2 * sp)
     x3 = x0 + ((ldown - cell_size) * sp - d / 2 * cp)
     y3 = y0 + ((ldown - cell_size) * cp + d / 2 * sp)
- 
+
     SHMDict["geometry"]["refinementOutlet"]["min"] = \
         "("+str(min(x1,x3))+" "+str(min(y1,y3))+" "+str(domainSize["z_min"])+")"
     SHMDict["geometry"]["refinementOutlet"]["max"] = \
@@ -211,23 +211,23 @@ def create_SHM_dict(work, wind_dict, params):
     SHMDict["addLayersControls"]["expansionRatio"] = r
     fLayerRatio = SHM["cellSize"]["fLayerRatio"]
     SHMDict["addLayersControls"]["finalLayerThickness"] = fLayerRatio
-    # calculating finalLayerRatio for getting 
+    # calculating finalLayerRatio for getting
     zp_z0 = SHM["cellSize"]["zp_z0"]
     firstLayerSize = 2 * zp_z0 * z0
     L = log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1
-    SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))    
-    
+    SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
+
     # changes that apply only to case 2
     if not(SHM["rectanguleDomainSTL"]):
         SHMDict["geometry"]["groundSurface"]["pointAndNormalDict"]["basePoint"] = \
-            "( 0 0 "+str(domainSize["z_min"])+")" 
+            "( 0 0 "+str(domainSize["z_min"])+")"
         SHMDict["castellatedMeshControls"]["refinementRegions"]["groundSurface"]["levels"] = \
             "(("+str(h2)+" "+str(levelRef)+") ("+str(h1)+" "+str(int(round(levelRef/2)))+"))"
         SHMDict["addLayersControls"]["layers"]["ground"]["nSurfaceLayers"] = int(round(L))
     SHMDict.writeFile()
 
-        
-        
+
+
 def create_boundary_conditions_dict(work, wind_dict, params):
     #--------------------------------------------------------------------------------------
     # changing inlet profile - - - - according to Martinez 2010
