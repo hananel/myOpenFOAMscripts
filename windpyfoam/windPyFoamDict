@@ -32,7 +32,7 @@ caseTypes
     }
     windRose
     {
-        blockMeshCellSize 30;
+        blockMeshCellSize 60;
         /* weight [0, 1.0], direction [0, 360.0] */
         windDir (
             (0.5 0)
