@@ -290,8 +290,11 @@ def create_case(wind_dict, params):
     # cloning case
     #--------------------------------------------------------------------------------------
     target = params['case_dir']
+    target = os.path.realpath(target)
+    if not os.path.exists(target):
+        makedirs(target)
     template = read_dict_string(wind_dict, 'template')
-    debug("template = %r" % template)
+    debug("template = %r, target = %r" % (template, target))
     orig = SolutionDirectory(template,
                              archive=None,
                              paraviewLink=False)
@@ -356,6 +359,10 @@ def run_SHM(work, wind_dict):
                          server=False,logname="SHM")
         print "Running SHM uniprocessor"
         SHMrun.start()
+
+def makedirs(d):
+    debug('creating %r' % d)
+    os.makedirs(d)
 
 def grid_convergance_params_generator(wind_dict):
     """
