@@ -100,24 +100,40 @@ def create_machine_file():
         fd.writelines(x + '\n' for x in node_list)
     return machine_dir, machine_file
 
-def sfoam(main,tasks,target,progname,solver,name): 
+def sfoam(main, tasks, target, progname, solver, name, verbose):
     atexit.register(cleanup)
+    print "debug: sfoam main=%s %s" % (
+        main,
+        os.environ.get('SLURM_JOBID', 'no SLURM_JOBID'))
     #test_re_matches()
     #raise SystemExit
+    if verbose:
+        silent = ''
+    else:
+        silent = '--silent'
     if 'SLURM_JOBID' in os.environ:
         machine_dir, machine_file = create_machine_file()
         print "machine_file = %s" % machine_file
         if not(target is "."):
             os.chdir(target)
         print "in salloc, calling %s with solver %s" % (main,solver)
+        if False: # debug
+            print "running %(main)s" % locals()
+            print "which:", os.popen("which %s" % main).read().strip()
+            print "parallel: '%(main)s --procnr=%(tasks)s %(silent)s --machinefile=%(machine_file)s %(solver)s '" % locals()
+            print locals()
+            os.system('bash')
         if tasks==1:
-            os.system("%(main)s --silent %(solver)s " % locals())
+            os.system("%(main)s %(silent)s %(solver)s " % locals())
         else:
-
-            os.system("%(main)s --procnr=%(tasks)s --silent --machinefile=%(machine_file)s %(solver)s " % locals())
+            os.system("%(main)s --procnr=%(tasks)s %(silent)s --machinefile=%(machine_file)s %(solver)s " % locals())
     else:
         print "calling salloc for OpenFOAM"
-        os.system("salloc -J %(name)s -n %(tasks)s %(progname)s --n %(tasks)s --main %(main)s --target %(target)s --solver %(solver)s" % locals())
+        if verbose:
+            verbose_arg = '--verbose'
+        else:
+            verbose_arg = ''
+        os.system("salloc -J %(name)s -n %(tasks)s %(progname)s %(verbose_arg)s --n %(tasks)s --main %(main)s --target %(target)s --solver %(solver)s" % locals())
 
 def main():
     parser = ArgumentParser()
@@ -126,6 +142,7 @@ def main():
     parser.add_argument('--n', type=int, default=1, help='number of tasks')
     parser.add_argument('--name', default='sfoam.py', help='task name')
     parser.add_argument('--solver', default='simpleFoam', help='solver name')
+    parser.add_argument('--verbose', default=False, help='verbose output', action='store_true')
     args = parser.parse_args(sys.argv[1:])
     main = args.main
     tasks = args.n
@@ -133,8 +150,8 @@ def main():
     progname = sys.argv[0]
     solver = args.solver
     name = args.name
-    print "main = %s, n = %s, target = %s" % (args.main, args.n, args.target)
-    sfoam(main=main, tasks=tasks, target=target, progname=progname, solver=solver, name=name)
+    print "main = %s, n = %s, target = %s, verbose = %s" % (args.main, args.n, args.target, args.verbose)
+    sfoam(main=main, tasks=tasks, target=target, progname=progname, solver=solver, name=name, verbose=args.verbose)
 
 if __name__ == '__main__':
     main()
