@@ -61,16 +61,19 @@ import multiprocessing
 import itertools
 import glob
 import shutil
+import subprocess
 from datetime import datetime
 from os import path
 from math import pi, sin, cos, floor, log, sqrt
 from argparse import ArgumentParser
 
 from PyFoam.RunDictionary.SolutionDirectory     import SolutionDirectory
-from PyFoam.RunDictionary.ParsedParameterFile import ParsedParameterFile
-from PyFoam.Basics.TemplateFile         import TemplateFile
-from PyFoam.Applications.Decomposer import Decomposer
-from PyFoam.Execution.BasicRunner 		import BasicRunner
+from PyFoam.RunDictionary.ParsedParameterFile   import ParsedParameterFile
+from PyFoam.Applications.ClearCase              import ClearCase
+from PyFoam.Applications.Runner                 import Runner
+from PyFoam.Basics.TemplateFile                 import TemplateFile
+from PyFoam.Applications.Decomposer             import Decomposer
+from PyFoam.Execution.BasicRunner 		        import BasicRunner
 
 sys.path.append('../')
 from runCases import runCasesFiles as runCases
@@ -323,6 +326,7 @@ def run_decompose(work, wind_dict):
     if wind_dict['procnr'] < 2:
         status('skipped decompose')
         return
+    ClearCase(args=work.name+'  --processors-remove')
     Decomposer(args=[work.name, wind_dict['procnr']])
 
 def run_block_mesh(work):
@@ -332,14 +336,26 @@ def run_block_mesh(work):
     blockRun.start()
     if not blockRun.runOK(): error("there was an error with blockMesh")
 
+def mpirun(procnr, argv, output_file):
+    # TODO: use Popen and supply stdout for continous output monitor (web)
+    assert(type(procnr), int)
+    return subprocess.check_output(['mpirun', '-np', str(procnr)] + argv + ['-parallel', '-output-file', str(output_file)])
+
 def run_SHM(work, wind_dict):
-    # TODO - add parallel runs!
-    # '-parallel', '-procnr', str(wind_dict['procnr'])
-    SHMrun = BasicRunner(argv=["snappyHexMesh",
+    if wind_dict["procnr"] > 1:
+        print "Running SHM parallel"
+        decomposeDict = ParsedParameterFile(
+        path.join(work.systemDir(), "decomposeParDict"))
+        decomposeDict["method"] = "ptscotch"
+        decomposeDict.writeFile()
+        mpirun(procnr=wind_dict['procnr'], argv=['snappyHexMesh',
+            '-overwrite', '-case', work.name],output_file='log.SHM')
+    else:
+        SHMrun = BasicRunner(argv=["snappyHexMesh",
                                '-overwrite','-case',work.name],
                          server=False,logname="SHM")
-    print "Running SHM"
-    SHMrun.start()
+        print "Running SHM uniprocessor"
+        SHMrun.start()
 
 def grid_convergance_params_generator(wind_dict):
     """
@@ -382,6 +398,10 @@ def run_directory(prefix):
     else:
         d = pristine
     return d
+
+def reconstructCases(cases):
+    for case in cases:
+        Runner(args=["reconstructPar" ,"-latestTime", "-case" ,case])
 
 def main(conf):
     """
@@ -438,8 +458,19 @@ def main(conf):
     status('RUNNING CASES')
     runCases(n=wind_dict['procnr'], runArg='Runner',
              cases=[case.name for case in cases])
-    status('DONE')
-
+    status('DONE running cases')
+    # reconstructing case
+    status('Reconstructing cases')
+    reconstructCases([case.name for case in cases])
+    status('Sampling cases')
+    # TODO  1. build sampleDict according to wind_dict measurement info
+    #       2. run sample utility
+    status('Ploting hit-rate')
+    # TODO
+    status('Ploting contour maps at specified heights')
+    # TODO
+    status('plotting wind rose and histogram at specified location')
+    # TODO
 # 5/
 
 if __name__ == '__main__':

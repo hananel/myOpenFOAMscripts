@@ -20,7 +20,7 @@ FoamFile
 // Wind Py Foam specific parameters.
 
 template "/home/hanan/bin/OpenFOAM/windpyfoam/test_template";
-procnr 1;
+procnr 2;
 
 caseTypes
 {
@@ -32,7 +32,7 @@ caseTypes
     }
     windRose
     {
-        blockMeshCellSize 20;
+        blockMeshCellSize 30;
         /* weight [0, 1.0], direction [0, 360.0] */
         windDir (
             (0.5 0)
