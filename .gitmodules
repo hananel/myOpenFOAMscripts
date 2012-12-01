@@ -1,0 +1,3 @@
+[submodule "celery"]
+	path = celery
+	url = git://github.com/celery/celery.git
