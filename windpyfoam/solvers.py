@@ -291,7 +291,7 @@ class Solver(object):
 
     def mpirun(self, procnr, argv, output_file):
         # TODO: use Popen and supply stdout for continous output monitor (web)
-        assert(type(procnr), int)
+        assert(type(procnr) is int)
         args = ' '.join(argv)
         os.system('mpirun -np %(procnr)s %(args)s | tee %(output_file)s' % locals())
 
@@ -362,7 +362,7 @@ class Solver(object):
     def reconstructCases(self, cases):
         for case in cases:
             Runner(args=["reconstructPar" ,"-latestTime", "-case" ,case])
-    
+
     def sampleCases(self, cases, work, wind_dict):
         # TODO - at the moment for 90 degrees phi only and in line instead of in a function
         for case in cases:
@@ -384,7 +384,7 @@ class Solver(object):
             self._r.status('Sampling case '+case.name)
             Runner(args=["sample" ,"-latestTime", "-case" ,case.name])
 
-       
+
     def writeMetMastLocations(self,case): # will replace the following 4 lines
         print 'TODO'
 
@@ -392,7 +392,7 @@ class Solver(object):
         refinement_length = wind_dict['SHMParams']['domainSize']['refinement_length']
         xi = linspace(-refinement_length,refinement_length,wind_dict['sampleParams']['Nx'])
         yi = xi
-        xmesh, ymesh = meshgrid(xi, yi) 
+        xmesh, ymesh = meshgrid(xi, yi)
         for case in cases:
             lastTime = genfromtxt(path.join(case.name,'PyFoamState.CurrentTime'))
             for h in wind_dict['sampleParams']['hSample']:
@@ -404,7 +404,7 @@ class Solver(object):
                 CS = plt.contourf(xi,yi,zi,400,cmap=plt.cm.jet,linewidths=0)
                 plt.colorbar(CS)
                 pdf.savefig()
-    
+
     def run_windpyfoam(self, conf):
         """
         Mesh: creating the write snappyHexMeshDict file
@@ -445,10 +445,10 @@ class Solver(object):
             self._r.error(str(e))
             raise SystemExit
         wind_dict['runs'] = self.run_directory('runs')
-        
+
         # starting the pdf file for accumilating graphical results
         pdf = PdfPages('results.pdf')
-        
+
         # running the grid convergence routine - for 1 specific direction
         gen = []
         if wind_dict["caseTypes"]["gridConvergence"]:
@@ -468,11 +468,11 @@ class Solver(object):
         # reconstructing case
         self._r.status('Reconstructing cases')
         self.reconstructCases([case.name for case in cases])
- 
+
         # TODO  1. build sampleDict according to wind_dict measurement info
         #       2. run sample utility
         self.sampleCases(cases, work, wind_dict)
-       
+
         self._r.status('Ploting hit-rate')
         # TODO
         self._r.status('Ploting contour maps at specified heights')
