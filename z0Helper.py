@@ -5,16 +5,14 @@ import math, sys
 from PyFoam.RunDictionary.ParsedParameterFile 	import ParsedParameterFile
 from Davenport import Davenport
 
-inputDict = ParsedParameterFile("testZ0InfluenceDict")
-z0 		= Davenport(inputDict["simParams"]["z0"],0)
+inputDict = ParsedParameterFile("windPyFoamDict")
+z0 		= inputDict["simParams"]["z0"]
 zp_z0 = inputDict["SHMParams"]["cellSize"]["zp_z0"]
 r = inputDict["SHMParams"]["cellSize"]["r"]
 L = inputDict["SHMParams"]["cellSize"]["layers"]
 levelRef = inputDict["SHMParams"]["cellSize"]["levelRef"]
-cell	= inputDict["SHMParams"]["cellSize"]["cell"]
+cell	= inputDict["caseTypes"]["windRose"]["blockMeshCellSize"]
 z0Vec = [Davenport(z0,-1),z0,Davenport(z0,1)]
-import pdb
-b = pdb.set_trace
 
 n = len(sys.argv)
 if len(sys.argv)>1:

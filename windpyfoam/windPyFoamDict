@@ -20,7 +20,7 @@ FoamFile
 // Wind Py Foam specific parameters.
 
 template "test_template";
-procnr 2;
+procnr 3;
 
 caseTypes
 {
@@ -32,11 +32,11 @@ caseTypes
     }
     windRose
     {
-        blockMeshCellSize 60;
+        blockMeshCellSize 40;
         /* weight [0, 1.0], direction [0, 360.0] */
         windDir (
-            (0.5 0)
-            //(0.5 90)
+            (0.5 90)
+            //(0.5 0)
         );
     };
 };
@@ -47,7 +47,7 @@ simParams
    	yM			20;
    	UM			5;
    	z0			0.0015;
-   	caseType	notSHM;
+   	caseType	SHM;
 };
 
 SHMParams
@@ -56,21 +56,21 @@ SHMParams
 
     cellSize
 	{
-		fLayerRatio 0.3;
+		fLayerRatio 0.001;
 		levelRef	2;
-		layers		6;
-		r			1.06;
-		zp_z0		13.5; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
+		layers		12;
+		r			1.2;
+		zp_z0		20; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
 	}
 	domainSize
 	{
-		refinement_length 100;
+		refinement_length 80;
         typical_height 12;
-		fXup		300;  // upwind fetch
-		fXdown		700; // downwind fetch
-		fY		400; // dom_y = fX * a
+		fXup		200;  // upwind fetch
+		fXdown		600; // downwind fetch
+		fY		360; // dom_y = fX * a
 		domZ	120; // = Href
-        z_min   0;
+        z_min   0.75;
 	}
 	pointInDomain
 	{
@@ -80,10 +80,6 @@ SHMParams
 	{
 		x0		0;
 		y0		0;
-	}
-	flowOrigin
-	{
-		deg	90;
 	}
 };
 
@@ -95,7 +91,8 @@ kEpsParams
 
 sampleParams
 {
-	hSample	10;
+	hSample	(10 50 100);
+    Nx 100;
 };
 
 // *********************************************************************** //

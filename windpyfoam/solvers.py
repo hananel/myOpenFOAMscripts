@@ -5,9 +5,14 @@ import itertools
 import glob
 import shutil
 import subprocess
+import translateSTL
 from datetime import datetime
 from os import path, makedirs
 from math import pi, sin, cos, floor, log, sqrt
+import scipy.interpolate as sc
+from numpy import linspace, meshgrid, genfromtxt
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 from PyFoam.RunDictionary.SolutionDirectory     import SolutionDirectory
 from PyFoam.RunDictionary.ParsedParameterFile   import ParsedParameterFile
@@ -133,14 +138,14 @@ class Solver(object):
         # changing inlet refinement reigon - crude correction to SHM layer fault at domain edges
         lup, ldown, d = domainSize["fXup"], domainSize["fXdown"], domainSize["fY"]
         x1 = x0 - (lup * sp + d / 2 * cp)
-        y1 = y0 - (lup * cp - d / 2 * sp)
+        y1 = y0 + (lup * cp - d / 2 * sp)
         x3 = x0 - ((lup - cell_size) * sp + d / 2 * cp)
         y3 = y0 - ((lup - cell_size) * cp - d / 2 * sp)
 
         SHMDict["geometry"]["upwindbox1"]["min"] = \
             "("+str(min(x1,x3))+" "+str(min(y1,y3))+" "+str(domainSize["z_min"])+")"
         SHMDict["geometry"]["upwindbox1"]["max"] = \
-            "("+str(max(x1,x3))+" "+str(max(y1,y3))+" "+str(domainSize["z_min"]+cell_size)+")"
+            "("+str(max(x1,x3))+" "+str(max(y1,y3))+" "+str(domainSize["z_min"]+cell_size/3)+")"
         """x1 = x0 + (ldown * sp + d / 2 * cp)
         y1 = y0 + (ldown * cp - d / 2 * sp)
         x3 = x0 + ((ldown - cell_size) * sp - d / 2 * cp)
@@ -156,8 +161,14 @@ class Solver(object):
         levelRef = SHM["cellSize"]["levelRef"]
         SHMDict["castellatedMeshControls"]["refinementSurfaces"]["terrain"]["level"] = \
             "("+str(levelRef)+" "+str(levelRef)+")"
-        SHMDict["castellatedMeshControls"]["refinementRegions"]["upwindbox1"]["level"] =  \
-            "("+str(levelRef * 2)+" "+str(levelRef * 2)+")"
+        SHMDict["castellatedMeshControls"]["refinementRegions"]["upwindbox1"]["levels"] =  \
+            "(("+str(1.0)+" "+str(levelRef * 2)+"))"
+
+        SHMDict["castellatedMeshControls"]["refinementRegions"]["refinementBox1"]["levels"] =  \
+            "(("+str(1.0)+" "+str(int(round(levelRef/2)))+"))"
+        SHMDict["castellatedMeshControls"]["refinementRegions"]["refinementBox2"]["levels"] =  \
+            "(("+str(1.0)+" "+str(levelRef)+"))"
+
         r = SHM["cellSize"]["r"]
         SHMDict["addLayersControls"]["expansionRatio"] = r
         fLayerRatio = SHM["cellSize"]["fLayerRatio"]
@@ -165,7 +176,7 @@ class Solver(object):
         # calculating finalLayerRatio for getting
         zp_z0 = SHM["cellSize"]["zp_z0"]
         firstLayerSize = 2 * zp_z0 * z0
-        L = log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1
+        L = min(log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1,20)
         SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
 
         # changes that apply only to case 2
@@ -173,7 +184,7 @@ class Solver(object):
             SHMDict["geometry"]["groundSurface"]["pointAndNormalDict"]["basePoint"] = \
                 "( 0 0 "+str(domainSize["z_min"])+")"
             SHMDict["castellatedMeshControls"]["refinementRegions"]["groundSurface"]["levels"] = \
-                "(("+str(h2)+" "+str(levelRef)+") ("+str(h1)+" "+str(int(round(levelRef/2)))+"))"
+                "(("+str(h2/2)+" "+str(levelRef)+") ("+str(h1/2)+" "+str(int(round(levelRef/2)))+"))"
             SHMDict["addLayersControls"]["layers"]["ground"]["nSurfaceLayers"] = int(round(L))
         SHMDict.writeFile()
 
@@ -281,10 +292,8 @@ class Solver(object):
     def mpirun(self, procnr, argv, output_file):
         # TODO: use Popen and supply stdout for continous output monitor (web)
         assert(type(procnr), int)
-        output = subprocess.check_output(['mpirun', '-np', str(procnr)] + argv + ['-parallel'],
-                                         stderr=subprocess.STDOUT)
-        with open(output_file, 'w') as fd:
-            fd.write(output)
+        args = ' '.join(argv)
+        os.system('mpirun -np %(procnr)s %(args)s | tee %(output_file)s' % locals())
 
     def run_SHM(self, work, wind_dict):
         if wind_dict["procnr"] > 1:
@@ -294,7 +303,9 @@ class Solver(object):
             decomposeDict["method"] = "ptscotch"
             decomposeDict.writeFile()
             self.mpirun(procnr=wind_dict['procnr'], argv=['snappyHexMesh',
-                '-overwrite', '-case', work.name],output_file='SHM.log')
+                '-overwrite', '-case', work.name],output_file=path.join(work.name, 'SHM.log'))
+            print 'running clearCase'
+            ClearCase(args=work.name+'  --processors-remove')
         else:
             SHMrun = BasicRunner(argv=["snappyHexMesh",
                                 '-overwrite','-case',work.name],
@@ -351,7 +362,49 @@ class Solver(object):
     def reconstructCases(self, cases):
         for case in cases:
             Runner(args=["reconstructPar" ,"-latestTime", "-case" ,case])
+    
+    def sampleCases(self, cases, work, wind_dict):
+        # TODO - at the moment for 90 degrees phi only and in line instead of in a function
+        for case in cases:
+            self._r.status('preparing Sample file for case '+case.name)
+            sampleFile = ParsedParameterFile(path.join(work.systemDir(), "sampleDict"))
+            self.writeMetMastLocations(case) # will replace the following 4 lines
+            sampleFile['sets'][1]['start'] = "("+str(-wind_dict['SHMParams']['domainSize']['fXup']*0.99)+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['z_min'])+")"
+            sampleFile['sets'][1]['end'] = "("+str(-wind_dict['SHMParams']['domainSize']['fXup']*0.99)+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['z_min']+50)+")"
+            sampleFile['sets'][3]['start'] = "("+str(wind_dict['SHMParams']['centerOfDomain']['x0'])+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['typical_height'])+")"
+            sampleFile['sets'][3]['end'] = "("+str(wind_dict['SHMParams']['centerOfDomain']['x0'])+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['typical_height']+50)+")"
+            del sampleFile.content['surfaces'][:]
+            for i,h in enumerate(wind_dict['sampleParams']['hSample']):
+                self._r.status('preparing sampling surface at '+str(h)+' meters agl')
+                translateSTL.stl_shift_z_filenames(path.join(case.name,'constant/triSurface/terrain.stl'), path.join(case.name,'constant/triSurface/terrain_agl_'+str(h)+'.stl'), h)
+                sampleFile.content['surfaces'].append('agl_'+str(h))
+                sampleFile.content['surfaces'].append(['agl_'+str(h)])
+                sampleFile['surfaces'][len(sampleFile['surfaces'])-1]={'type':'sampledTriSurfaceMesh','surface':'terrain_agl_'+str(h)+'.stl','source':'cells'}
+            sampleFile.writeFile()
+            self._r.status('Sampling case '+case.name)
+            Runner(args=["sample" ,"-latestTime", "-case" ,case.name])
 
+       
+    def writeMetMastLocations(self,case): # will replace the following 4 lines
+        print 'TODO'
+
+    def plotContourMaps(self,cases, pdf, wind_dict):
+        refinement_length = wind_dict['SHMParams']['domainSize']['refinement_length']
+        xi = linspace(-refinement_length,refinement_length,wind_dict['sampleParams']['Nx'])
+        yi = xi
+        xmesh, ymesh = meshgrid(xi, yi) 
+        for case in cases:
+            lastTime = genfromtxt(path.join(case.name,'PyFoamState.CurrentTime'))
+            for h in wind_dict['sampleParams']['hSample']:
+                data = genfromtxt(path.join(case.name,'surfaces/'+str(int(lastTime))+'/U_agl_'+str(h)+'.raw'))
+                # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
+                zi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), data[:,3].ravel(), (xmesh,ymesh))
+                plt.figure(h)
+                plt.title(case.name+' at height '+str(h)+' meter agl')
+                CS = plt.contourf(xi,yi,zi,400,cmap=plt.cm.jet,linewidths=0)
+                plt.colorbar(CS)
+                pdf.savefig()
+    
     def run_windpyfoam(self, conf):
         """
         Mesh: creating the write snappyHexMeshDict file
@@ -392,6 +445,10 @@ class Solver(object):
             self._r.error(str(e))
             raise SystemExit
         wind_dict['runs'] = self.run_directory('runs')
+        
+        # starting the pdf file for accumilating graphical results
+        pdf = PdfPages('results.pdf')
+        
         # running the grid convergence routine - for 1 specific direction
         gen = []
         if wind_dict["caseTypes"]["gridConvergence"]:
@@ -411,15 +468,20 @@ class Solver(object):
         # reconstructing case
         self._r.status('Reconstructing cases')
         self.reconstructCases([case.name for case in cases])
-        self._r.status('Sampling cases')
+ 
         # TODO  1. build sampleDict according to wind_dict measurement info
         #       2. run sample utility
+        self.sampleCases(cases, work, wind_dict)
+       
         self._r.status('Ploting hit-rate')
         # TODO
         self._r.status('Ploting contour maps at specified heights')
+        self.plotContourMaps(cases, pdf, wind_dict)
         # TODO
         self._r.status('plotting wind rose and histogram at specified location')
         # TODO
+        pdf.close()
+        plt.show()
 
 def run_windpyfoam(reporter, conf):
     solver = Solver(reporter)

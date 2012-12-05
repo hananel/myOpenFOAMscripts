@@ -329,7 +329,7 @@ addLayersControls
     // Overall max number of layer addition iterations. The mesher will exit
     // if it reaches this number of iterations; possibly with an illegal
     // mesh.
-    nLayerIter 100;
+    nLayerIter 50;
 
     // Max number of iterations after which relaxed meshQuality controls
     // get used. Up to nRelaxIter it uses the settings in meshQualityControls,
