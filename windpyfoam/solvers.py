@@ -10,7 +10,7 @@ from datetime import datetime
 from os import path, makedirs
 from math import pi, sin, cos, floor, log, sqrt
 import scipy.interpolate as sc
-from numpy import linspace, meshgrid, genfromtxt
+from numpy import linspace, meshgrid, genfromtxt, zeros
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -367,7 +367,7 @@ class Solver(object):
         # TODO - at the moment for 90 degrees phi only and in line instead of in a function
         for case in cases:
             self._r.status('preparing Sample file for case '+case.name)
-            sampleFile = ParsedParameterFile(path.join(work.systemDir(), "sampleDict"))
+            sampleFile = ParsedParameterFile(path.join(case.systemDir(), "sampleDict"))
             self.writeMetMastLocations(case) # will replace the following 4 lines
             sampleFile['sets'][1]['start'] = "("+str(-wind_dict['SHMParams']['domainSize']['fXup']*0.99)+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['z_min'])+")"
             sampleFile['sets'][1]['end'] = "("+str(-wind_dict['SHMParams']['domainSize']['fXup']*0.99)+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['z_min']+50)+")"
@@ -393,17 +393,29 @@ class Solver(object):
         xi = linspace(-refinement_length,refinement_length,wind_dict['sampleParams']['Nx'])
         yi = xi
         xmesh, ymesh = meshgrid(xi, yi)
-        for case in cases:
+        hs = wind_dict['sampleParams']['hSample']
+        avgV = zeros((len(hs), len(xi), len(yi)))
+        fig_n = 1
+        for i, case in enumerate(cases):
             lastTime = genfromtxt(path.join(case.name,'PyFoamState.CurrentTime'))
-            for h in wind_dict['sampleParams']['hSample']:
+            for hi, h in enumerate(hs):
                 data = genfromtxt(path.join(case.name,'surfaces/'+str(int(lastTime))+'/U_agl_'+str(h)+'.raw'))
                 # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
-                zi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), data[:,3].ravel(), (xmesh,ymesh))
-                plt.figure(h)
-                plt.title(case.name+' at height '+str(h)+' meter agl')
-                CS = plt.contourf(xi,yi,zi,400,cmap=plt.cm.jet,linewidths=0)
+                vi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), data[:,3].ravel(), (xmesh,ymesh))
+                plt.figure(fig_n); fig_n += 1
+                plt.title(case.name+'\n at height '+str(h)+' meter agl')
+                CS = plt.contourf(xi, yi, vi, 400,cmap=plt.cm.jet,linewidths=0)
                 plt.colorbar(CS)
                 pdf.savefig()
+                # assuming the windDir weights are normalized
+                #import pdb; pdb.set_trace()
+                avgV[hi, :, :] += vi * wind_dict["caseTypes"]["windRose"]["windDir"][i][0]
+        for hi, h in enumerate(hs):
+            plt.figure(fig_n); fig_n += 1
+            plt.title('average wind velocity at height ' + str(h) + ' meter agl')
+            CS = plt.contourf(xi, yi, avgV[hi, :, :], 400, cmap=plt.cm.jet, linewidths=0)
+            plt.colorbar(CS)
+            pdf.savefig()
 
     def run_windpyfoam(self, conf):
         """
