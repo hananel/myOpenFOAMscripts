@@ -176,7 +176,7 @@ class Solver(object):
         # calculating finalLayerRatio for getting
         zp_z0 = SHM["cellSize"]["zp_z0"]
         firstLayerSize = 2 * zp_z0 * z0
-        L = min(log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1,20)
+        L = min(log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1,100)
         SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
 
         # changes that apply only to case 2
@@ -401,7 +401,7 @@ class Solver(object):
             for hi, h in enumerate(hs):
                 data = genfromtxt(path.join(case.name,'surfaces/'+str(int(lastTime))+'/U_agl_'+str(h)+'.raw'))
                 # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
-                vi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), data[:,3].ravel(), (xmesh,ymesh))
+                vi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), (data[:,3].ravel()**2+data[:,4].ravel()**2)**0.5, (xmesh,ymesh))
                 plt.figure(fig_n); fig_n += 1
                 plt.title(case.name+'\n at height '+str(h)+' meter agl')
                 CS = plt.contourf(xi, yi, vi, 400,cmap=plt.cm.jet,linewidths=0)

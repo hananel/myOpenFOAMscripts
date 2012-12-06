@@ -20,7 +20,7 @@ FoamFile
 // Wind Py Foam specific parameters.
 
 template "test_template";
-procnr 3;
+procnr 1;
 
 caseTypes
 {
@@ -32,7 +32,7 @@ caseTypes
     }
     windRose
     {
-        blockMeshCellSize 30;
+        blockMeshCellSize 60;
         /* weight [0, 1.0], direction [0, 360.0] */
         windDir (
             (0.5 90)
@@ -56,11 +56,11 @@ SHMParams
 
     cellSize
 	{
-		fLayerRatio 0.01;
-		levelRef	3;
+		fLayerRatio 0.4;
+		levelRef	1;
 		layers		12;
 		r			1.2;
-		zp_z0		20; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
+		zp_z0		50; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
 	}
 	domainSize
 	{
@@ -68,7 +68,7 @@ SHMParams
         typical_height 12;
 		fXup		300;  // upwind fetch
 		fXdown		700; // downwind fetch
-		fY		800; // dom_y = fX * a
+		fY		480; // dom_y = fX * a
 		domZ	120; // = Href
         z_min   0.75;
 	}
