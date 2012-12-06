@@ -417,7 +417,7 @@ class Solver(object):
             plt.colorbar(CS)
             pdf.savefig()
 
-    def run_windpyfoam(self, conf):
+    def run_windpyfoam(self, dict):
         """
         Mesh: creating the write snappyHexMeshDict file
         use the right snappyHexMeshDict_XXX.template file with wind_dict
@@ -447,11 +447,11 @@ class Solver(object):
             3. a "hit rate" which shows the aggreement of the simulated wind speeds
             and turbulence to the measurements
         """
-        if not os.path.exists(conf):
-            self._r.error("missing %s file" % conf)
+        if not os.path.exists(dict):
+            self._r.error("missing %s file" % dict)
             raise SystemExit
         try:
-            wind_dict = ParsedParameterFile(conf)
+            wind_dict = ParsedParameterFile(dict)
         except Exception, e:
             self._r.error("failed to parse windPyFoam parameter file:")
             self._r.error(str(e))
@@ -495,6 +495,6 @@ class Solver(object):
         pdf.close()
         plt.show()
 
-def run_windpyfoam(reporter, conf):
+def run_windpyfoam(reporter, dict):
     solver = Solver(reporter)
-    solver.run_windpyfoam(conf)
+    solver.run_windpyfoam(dict)

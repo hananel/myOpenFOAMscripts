@@ -69,13 +69,13 @@ def init_event_loop(args):
         gui = module.web
     return module, gui
 
-def run(gui, conf):
-    run_windpyfoam(gui, conf)
+def run(gui, dict):
+    run_windpyfoam(gui, dict)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--conf', required=True)
+    parser.add_argument('--dict', required=True)
     parser.add_argument('--webgui', type=bool)
     args = parser.parse_args(sys.argv[1:])
     eventloop, gui = init_event_loop(args)
-    eventloop.run(run, dict(gui=gui, conf=args.conf))
+    eventloop.run(run, dict(gui=gui, dict=args.dict))
