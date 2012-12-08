@@ -9,3 +9,5 @@ def status(x):
 
 def run(f, kw):
     f(**kw)
+
+import matplotlib.pyplot as plot

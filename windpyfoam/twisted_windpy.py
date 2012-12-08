@@ -25,7 +25,7 @@ class ProcessManager(object):
 
     def __init__(self):
         self._processes = []
-        self._verbose = True
+        self._verbose = False
         self._pending_status = []
 
     def on_data(self, i, fd, data):
@@ -36,8 +36,9 @@ class ProcessManager(object):
             self._on_line(i, fd, line)
 
     def get_status(self):
-        ret = self._pending_status[:]
+        ret = list(self._pending_status)
         del self._pending_status[:]
+        #print "DEBUG: %d" % len(ret)
         return ret
 
     def _on_line(self, i, fd, line):
@@ -48,19 +49,36 @@ class ProcessManager(object):
         # be invalidated, or worse point to the wrong process.
         if line.startswith('STATUS: '):
             status = line[len('STATUS: '):]
+            print "STATUS: (%d) %s" % (len(self._pending_status), status)
             self._pending_status.append((i, status))
 
     def process_count(self):
         return len(self._processes)
 
-    def start_process(self):
+    def start_process(self, dict_filename):
+        """
+        TODO - give it an stl name
+        """
+        if not os.path.isfile(dict_filename):
+            return False
+        try:
+            with open(dict_filename) as fd:
+                pass
+        except:
+            return False
         i = len(self._processes)
         self._processes.append(None)
         process_protocol = WindPyProcessProtocol(self, i)
+        env = dict(os.environ)
+        if 'DISPLAY' not in env:
+            print "DEBUG: adding DISPLAY"
+            env['DISPLAY'] = ':0.0'
         self._processes[i] = reactor.spawnProcess(process_protocol, '/usr/bin/python',
-                ['/usr/bin/python', 'windpyfoam.py', '--conf', 'windPyFoamDict'],
-                env=os.environ)
+                ['/usr/bin/python', 'windpyfoam.py', '--dict', dict_filename,
+                 '--no-plots'],
+                env=env)
         self._processes[i].start_pid = self._processes[i].pid
+        return True
 
     def on_process_ended(self, i, status):
         print self._processes[i].start_pid, "exited"
@@ -75,7 +93,7 @@ class Tester(object):
         self.i = 0
         process_manager = TestProcessManager()
         self.process_manager = process_manager
-        process_manager.start_process()
+        process_manager.start_process('windPyFoamDict')
         print process_manager.process_count()
         t = task.LoopingCall(self.cb)
         t.start(1)

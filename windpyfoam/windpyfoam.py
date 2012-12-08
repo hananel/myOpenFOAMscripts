@@ -58,6 +58,8 @@ run3dHillBase contains the BC (Boundary Condition) code (run3dHillBase.py:run3dH
 import atexit
 import sys
 
+import stdio
+
 def flush():
     sys.stdout.flush()
     sys.stderr.flush()
@@ -67,22 +69,9 @@ from argparse import ArgumentParser
 
 from solvers import run_windpyfoam
 
-def init_event_loop(args):
-    if not args.webgui:
-        module = __import__('stdio')
-        gui = module
-    else:
-        module = __import__('web')
-        gui = module.web
-    return module, gui
-
-def run(gui, dict):
-    run_windpyfoam(gui, dict)
-
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--dict', required=True)
-    parser.add_argument('--webgui', type=bool)
+    parser.add_argument('--no-plots', default=False, action='store_true')
     args = parser.parse_args(sys.argv[1:])
-    eventloop, gui = init_event_loop(args)
-    eventloop.run(run, dict(gui=gui, dict=args.dict))
+    run_windpyfoam(stdio, args.dict, args.no_plots)

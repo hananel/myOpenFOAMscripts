@@ -11,7 +11,6 @@ from os import path, makedirs
 from math import pi, sin, cos, floor, log, sqrt
 import scipy.interpolate as sc
 from numpy import linspace, meshgrid, genfromtxt, zeros
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 from PyFoam.RunDictionary.SolutionDirectory     import SolutionDirectory
@@ -39,8 +38,9 @@ def read_dict_string(d, key):
     return val
 
 class Solver(object):
-    def __init__(self, reporter):
+    def __init__(self, reporter, show_plots):
         self._r = reporter
+        self._show_plots = show_plots
 
     def create_block_mesh_dict(self, work, wind_dict, params):
         phi = params['phi']
@@ -385,10 +385,10 @@ class Solver(object):
             Runner(args=["sample" ,"-latestTime", "-case" ,case.name])
 
 
-    def writeMetMastLocations(self,case): # will replace the following 4 lines
+    def writeMetMastLocations(self, case): # will replace the following 4 lines
         print 'TODO'
 
-    def plotContourMaps(self,cases, pdf, wind_dict):
+    def plotContourMaps(self, cases, pdf, wind_dict):
         refinement_length = wind_dict['SHMParams']['domainSize']['refinement_length']
         xi = linspace(-refinement_length,refinement_length,wind_dict['sampleParams']['Nx'])
         yi = xi
@@ -396,6 +396,7 @@ class Solver(object):
         hs = wind_dict['sampleParams']['hSample']
         avgV = zeros((len(hs), len(xi), len(yi)))
         fig_n = 1
+        plt = self._r.plot
         for i, case in enumerate(cases):
             lastTime = genfromtxt(path.join(case.name,'PyFoamState.CurrentTime'))
             for hi, h in enumerate(hs):
@@ -493,9 +494,11 @@ class Solver(object):
         self._r.status('plotting wind rose and histogram at specified location')
         # TODO
         pdf.close()
-        plt.show()
+        self._r.status('results.pdf')
+        if self._show_plots:
+            self._r.plot.show()
         self._r.status('exiting')
 
-def run_windpyfoam(reporter, dict):
-    solver = Solver(reporter)
+def run_windpyfoam(reporter, dict, no_plots):
+    solver = Solver(reporter, show_plots=not no_plots)
     solver.run_windpyfoam(dict)

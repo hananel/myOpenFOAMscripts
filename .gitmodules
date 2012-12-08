@@ -1,3 +1,6 @@
 [submodule "celery"]
 	path = celery
 	url = git://github.com/celery/celery.git
+[submodule "pdf.js"]
+	path = pdf.js
+	url = git://github.com/mozilla/pdf.js
