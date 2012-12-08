@@ -55,8 +55,15 @@ run3dHillBase contains the BC (Boundary Condition) code (run3dHillBase.py:run3dH
 
 """
 
-from argparse import ArgumentParser
+import atexit
 import sys
+
+def flush():
+    sys.stdout.flush()
+    sys.stderr.flush()
+atexit.register(flush)
+
+from argparse import ArgumentParser
 
 from solvers import run_windpyfoam
 

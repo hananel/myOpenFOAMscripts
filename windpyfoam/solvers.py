@@ -494,6 +494,7 @@ class Solver(object):
         # TODO
         pdf.close()
         plt.show()
+        self._r.status('exiting')
 
 def run_windpyfoam(reporter, dict):
     solver = Solver(reporter)
