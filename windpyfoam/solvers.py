@@ -469,14 +469,17 @@ class Solver(object):
         gen = itertools.chain(gen,
                 self.wind_rose_params_generator(wind_dict))
         cases = []
+        names = []
         for params in gen:
             self._r.debug(params['name'])
             work = self.create_case(wind_dict, params)
+            names.append('wind%s' % int(180 / pi * params['phi']))
             cases.append(work)
         # TODO: customizable runArg
         self._r.status('RUNNING CASES')
-        runCases(n=wind_dict['procnr'], runArg='Runner',
-                cases=[case.name for case in cases])
+        runCases(names=names,
+                 n=wind_dict['procnr'], runArg="sfoam",
+                 cases=[case.name for case in cases])
         self._r.status('DONE running cases')
         # reconstructing case
         self._r.status('Reconstructing cases')

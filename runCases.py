@@ -88,7 +88,7 @@ AddToMyFigure4
 
 """
 
-def runCasesFiles(cases, runArg, n):
+def runCasesFiles(names, cases, runArg, n):
     start = os.getcwd()
     for case in cases:
         os.chdir(case)
@@ -120,7 +120,7 @@ def runCasesFiles(cases, runArg, n):
                      'Runner': runNoPlot,
                      'sfoam':runsfoam,}
         func = functions[runArg]
-        pool_run_cases(p, cases, n, func)
+        pool_run_cases(p, names, cases, n, func)
     try:
         start_loop()
     except KeyboardInterrupt:
@@ -145,34 +145,38 @@ def main():
     args = parser.parse_args(sys.argv[1:])
     runCases(args)
 
-def pool_run_cases(p, cases, n, f):
+def pool_run_cases(p, names, cases, n, f):
     if n > 1:
         procnr_args = '--procnr %s' % n
     else:
         procnr_args = ''
-    args = list(enumerate([(case,
-               ("--progress %(procnr_args)s simpleFoam -case %(case)s" % locals()).split())
-               for case in cases]))
+    args = list(enumerate([dict(name=name, target=case,
+               args=("--progress %(procnr_args)s simpleFoam -case %(case)s" % locals()).split())
+               for name, case in zip(names, cases)]))
     for result in p.imap_unordered(f, args):
         print "%s: got %s" % (f.func_name, result)
 
-def run((i, (target, args))):
+def run((i, d)):
+    target, args = d['target'], d['args']
     time.sleep(i * 2)
     print "got %s" % repr(args)
     return PlotRunner(args=args)
 
-def runNoPlot((i, (target, args))):
+def runNoPlot((i, d)):
+    target, args = d['target'], d['args']
     time.sleep(i * 2)
     print "got %s" % repr(args)
     return Runner(args=args)
 
-def runsfoam((i, (target, args))):
+def runsfoam((i, d)):
+    target, args, name = d['target'], d['args'], d['name']
     time.sleep(i * 2)
     print "---------------------- %s" % args
     n = args.pop(5) # that's where n gets stored
     print "sfoam - chdir to %s" % os.getcwd()
     print "calling sfoam target=%r" % target
-    return sfoam.sfoam(main="pyFoamRunner.py", tasks=n, target=target, progname="/home/hanan/bin/OpenFOAM/sfoam.py")
+    return sfoam.sfoam(main="pyFoamRunner.py", tasks=n, target=target, progname="/home/hanan/bin/OpenFOAM/sfoam.py",
+                       solver='simpleFoam', name=name, verbose=False)
 
 if __name__ == '__main__':
     main()
