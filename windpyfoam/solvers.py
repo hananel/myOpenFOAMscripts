@@ -176,7 +176,7 @@ class Solver(object):
         # calculating finalLayerRatio for getting
         zp_z0 = SHM["cellSize"]["zp_z0"]
         firstLayerSize = 2 * zp_z0 * z0
-        L = min(log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1,100)
+        L = min(log(fLayerRatio/firstLayerSize*z_cell/2**levelRef) / log(r) + 1,12)
         SHMDict["addLayersControls"]["layers"]["terrain_solid"]["nSurfaceLayers"] = int(round(L))
 
         # changes that apply only to case 2
@@ -302,7 +302,7 @@ class Solver(object):
             path.join(work.systemDir(), "decomposeParDict"))
             decomposeDict["method"] = "ptscotch"
             decomposeDict.writeFile()
-            self.mpirun(procnr=wind_dict['procnr'], argv=['snappyHexMesh',
+            self.mpirun(procnr=wind_dict['procnrSnappy'], argv=['snappyHexMesh',
                 '-overwrite', '-case', work.name],output_file=path.join(work.name, 'SHM.log'))
             print 'running clearCase'
             ClearCase(args=work.name+'  --processors-remove')
