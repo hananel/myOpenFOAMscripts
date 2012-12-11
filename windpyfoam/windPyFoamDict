@@ -20,6 +20,7 @@ FoamFile
 // Wind Py Foam specific parameters.
 
 template "test_template";
+runArg  "sfoam";
 procnr 20;
 procnrSnappy 10;
 
@@ -57,7 +58,7 @@ SHMParams
 
     cellSize
 	{
-		fLayerRatio 2;
+		fLayerRatio 4;
 		levelRef	2;
 		layers		12;
 		r			1.2;
@@ -65,8 +66,8 @@ SHMParams
 	}
 	domainSize
 	{
-		refinement_length 100;
-        typical_height 15;
+		refinement_length 80;
+        typical_height 12;
 		fXup		200;  // upwind fetch
 		fXdown		800; // downwind fetch
 		fY		660; // dom_y = fX * a

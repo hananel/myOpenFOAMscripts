@@ -162,7 +162,7 @@ class Solver(object):
         SHMDict["castellatedMeshControls"]["refinementSurfaces"]["terrain"]["level"] = \
             "("+str(levelRef)+" "+str(levelRef)+")"
         SHMDict["castellatedMeshControls"]["refinementRegions"]["upwindbox1"]["levels"] =  \
-            "(("+str(1.0)+" "+str(levelRef * 2)+"))"
+            "(("+str(1.0)+" "+str(min(levelRef * 2,4))+"))"
 
         SHMDict["castellatedMeshControls"]["refinementRegions"]["refinementBox1"]["levels"] =  \
             "(("+str(1.0)+" "+str(int(round(levelRef/2)))+"))"
@@ -477,8 +477,11 @@ class Solver(object):
             cases.append(work)
         # TODO: customizable runArg
         self._r.status('RUNNING CASES')
+        runArg = read_dict_string(wind_dict, 'runArg')
+        self._r.status(runArg)
+        assert(runArg in ['runner', 'plotRunner', 'sfoam'])
         runCases(names=names,
-                 n=wind_dict['procnr'], runArg="sfoam",
+                 n=wind_dict['procnr'], runArg=runArg,
                  cases=[case.name for case in cases])
         self._r.status('DONE running cases')
         # reconstructing case

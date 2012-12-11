@@ -33,10 +33,9 @@ caseTypes
     }
     windRose
     {
-        blockMeshCellSize 15;
+        blockMeshCellSize 60;
         /* weight [0, 1.0], direction [0, 360.0] */
         windDir (
-            (0.5 90)
             (0.5 0)
         );
     };
@@ -58,8 +57,8 @@ SHMParams
     cellSize
 	{
 		fLayerRatio 2;
-		levelRef	2;
-		layers		12;
+		levelRef	1;
+		layers		2;
 		r			1.2;
 		zp_z0		20; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
 	}

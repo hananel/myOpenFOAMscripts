@@ -150,8 +150,11 @@ def pool_run_cases(p, names, cases, n, f):
         procnr_args = '--procnr %s' % n
     else:
         procnr_args = ''
-    args = list(enumerate([dict(name=name, target=case,
-               args=("--progress %(procnr_args)s simpleFoam -case %(case)s" % locals()).split())
+    args = list(enumerate([
+        dict(name=name, target=case,
+             args=("--progress %(procnr_args)s simpleFoam -case %(case)s" % locals()).split(),
+             tasks=n
+             )
                for name, case in zip(names, cases)]))
     for result in p.imap_unordered(f, args):
         print "%s: got %s" % (f.func_name, result)
@@ -169,13 +172,13 @@ def runNoPlot((i, d)):
     return Runner(args=args)
 
 def runsfoam((i, d)):
-    target, args, name = d['target'], d['args'], d['name']
+    tasks, target, args, name = d['tasks'], d['target'], d['args'], d['name']
     time.sleep(i * 2)
     print "---------------------- %s" % args
-    n = args.pop(5) # that's where n gets stored
     print "sfoam - chdir to %s" % os.getcwd()
-    print "calling sfoam target=%r" % target
-    return sfoam.sfoam(main="pyFoamRunner.py", tasks=n, target=target, progname="/home/hanan/bin/OpenFOAM/sfoam.py",
+    print "calling sfoam tasks=%s target=%s" % (tasks, repr(target))
+    return sfoam.sfoam(main="pyFoamRunner.py", tasks=tasks, target=target,
+                       progname="/home/hanan/bin/OpenFOAM/sfoam.py",
                        solver='simpleFoam', name=name, verbose=False)
 
 if __name__ == '__main__':

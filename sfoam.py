@@ -133,7 +133,9 @@ def sfoam(main, tasks, target, progname, solver, name, verbose):
             verbose_arg = '--verbose'
         else:
             verbose_arg = ''
-        os.system("salloc -J %(name)s -n %(tasks)s %(progname)s %(verbose_arg)s --n %(tasks)s --main %(main)s --target %(target)s --solver %(solver)s" % locals())
+        salloc_cmd = "salloc -J %(name)s --tasks %(tasks)s %(progname)s %(verbose_arg)s --main %(main)s --target %(target)s --solver %(solver)s" % locals()
+        print "calling: %s" % repr(salloc_cmd)
+        os.system(salloc_cmd)
 
 def main():
     parser = ArgumentParser()
