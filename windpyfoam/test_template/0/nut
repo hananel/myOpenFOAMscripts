@@ -29,7 +29,7 @@ boundaryField
   "terrain_.*"
   {
     type nutkAtmRoughWallFunction;
-    z0 uniform 0.03; 	
+    z0 uniform 0.015; 	
     kappa 0.4; 	
     Cmu 0.03; 	
     value uniform 0.0; 	
@@ -37,7 +37,7 @@ boundaryField
   ground
   {
     type nutkAtmRoughWallFunction;
-    z0 uniform 0.03; 	
+    z0 uniform 0.0003; 	
     kappa 0.4; 	
     Cmu 0.03; 	
     value uniform 0.0; 	

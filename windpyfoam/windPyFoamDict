@@ -35,20 +35,21 @@ caseTypes
     windRose
     {
         blockMeshCellSize 15;
-        /* weight [0, 1.0], direction [0, 360.0] */
+        /* Inlet profile, direction and freaquency of occurance */
+        /* weight [0, 1.0], direction [0, 360.0], z0 [m [0,100]], TKE/us^2 [0,100], us [m/s [0,100]]*/
         windDir (
-            (0.5 90)
-            (0.5 0)
+            (0.15 90  0.0003 5.8 0.4)
+            (0.35 75  0.0003 5.8 0.4)
+            (0.05 59  0.0003 5.8 0.4)
+            (0.45 270 0.015  5.8 0.5)
         );
     };
 };
 
-// simulation parameters
+// general simulation parameters
 simParams
 {
-   	yM			20;
-   	UM			5;
-   	z0			0.0015;
+   	nu			1.4076485;   // [m^2/s]
    	caseType	SHM;
 };
 
@@ -58,7 +59,7 @@ SHMParams
 
     cellSize
 	{
-		fLayerRatio 4;
+		fLayerRatio 4; //notice if the test_template uses relative values or not
 		levelRef	2;
 		layers		12;
 		r			1.2;
@@ -66,13 +67,13 @@ SHMParams
 	}
 	domainSize
 	{
-		refinement_length 80;
-        typical_height 12;
-		fXup		200;  // upwind fetch
-		fXdown		800; // downwind fetch
-		fY		660; // dom_y = fX * a
-		domZ	120; // = Href
-        z_min   0.75;
+		refinement_length 80; [m]
+        typical_height 12; [m]
+		fXup		200; // upwind fetch [m]
+		fXdown		800; // downwind fetch [m]
+		fY		    660; // dom_y = fX * a [m]
+		domZ	    120; // = Href [m]
+        z_min       0.75;// [m]
 	}
 	pointInDomain
 	{
@@ -87,10 +88,82 @@ SHMParams
 
 kEpsParams
 {
-	Cmu		0.03;	// castro 96
+	Cmu		0.03;	// castro 96 - redundent for windRose
 	k		0.4;
 };
 
+Measurments
+{
+    M0
+    {
+        x -180.8; // [m]
+        y -103.3; // [m]
+        gl 0.75;  // [m] ground level
+    }
+    
+    M1
+    {
+        x -52.4; // [m]
+        y -31.0; // [m]
+        gl 0.80; // [m] ground level
+    }
+    
+    M2
+    {
+        x -34.9;   // [m]
+        y -21.1;   // [m]
+        gl 10.80;  // [m] ground level
+    }
+    
+    M3
+    {
+        x  3.2 ; // [m]
+        y  0.0;  // [m]
+        gl 11.7; // [m] ground level
+    }
+    
+    M4
+    {
+        x  51.5; // [m]
+        y  30.6; // [m]
+        gl 1.40; // [m] ground level
+    }
+
+    M5
+    {
+        x   1.5; // [m]
+        y -48.9; // [m]
+        gl 2.60; // [m] ground level
+    }
+    
+    M6
+    {
+        x  -46.1; // [m]
+        y    0.2; // [m]
+        gl 11.50; // [m] ground level
+    }
+
+    M7
+    {
+        x -66.9; // [m]
+        y   0.0; // [m]
+        gl 0.80; // [m] ground level
+    }
+    
+    M8
+    {
+        x 92.0; // [m]
+        y -0.1; // [m]
+        gl 2.0; // [m] ground level
+    }
+    
+    M9
+    {
+        x 327.3; // [m]
+        y -39.3; // [m]
+        gl 0.75; // [m] ground level
+    }
+}
 sampleParams
 {
 	hSample	(10 50);

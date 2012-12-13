@@ -195,19 +195,18 @@ class Solver(object):
         # changing inlet profile - - - - according to Martinez 2010
         #--------------------------------------------------------------------------------------
         phi = params['phi']
+        i = params['i']
         SHM = wind_dict['SHMParams']
         kEpsParams = wind_dict['kEpsParams']
-        UM = wind_dict['simParams']['UM']
-        yM = wind_dict['simParams']['yM']
         k = kEpsParams['k'] # von karman constant
-        z0 = wind_dict['simParams']['z0'] # TODO: calculated per wind direction using roughness2foam
-        us = UM * k / log(yM / z0)
+        z0 = wind_dict["caseTypes"]["windRose"]["windDir"][i][2] # TODO: calculated per wind direction using roughness2foam
+        us = wind_dict["caseTypes"]["windRose"]["windDir"][i][4] 
         Href = SHM['domainSize']['domZ']
-        Cmu = kEpsParams['Cmu'] # K-epsilon turbulence closure parameter
+        TKE = us**2 * wind_dict["caseTypes"]["windRose"]["windDir"][i][3]
+        Cmu = us / TKE**2
         # change inlet profile
-        Uref = Utop = us / k * log(Href / z0)
-        # calculating turbulentKE
-        TKE = us * us / sqrt(Cmu)
+        z_min = wind_dict['SHMParams']['domainSize']['z_min']
+        Uref = Utop = us / k * log((Href - z_min) / z0)
         # 1: changing ABLConditions
         bmName = path.join(work.initialDir(),"include", "ABLConditions")
         template = TemplateFile(bmName + ".template")
@@ -224,6 +223,10 @@ class Solver(object):
         nutFile["boundaryField"]["ground"]["z0"].setUniform(z0)
         nutFile["boundaryField"]["terrain_.*"]["z0"].setUniform(z0)
         nutFile.writeFile()
+        # 3: changing transport properties
+        transportFile = ParsedParameterFile(path.join(work.constantDir(),'transportProperties'))
+        transportFile['nu'] = wind_dict['simParams']['nu']
+        transportFile.writeFile()
 
     def create_case(self, wind_dict, params):
         """
@@ -257,7 +260,6 @@ class Solver(object):
             wind_dict['procnr'] = min(wind_dict['procnr'], multiprocessing.cpu_count())
         phi = params['wind_dir'] * pi / 180
         params['phi'] = phi # - pi/180 * 90
-
         self._r.status('creating block mesh dictionary')
         self.create_block_mesh_dict(work, wind_dict, params)
         self._r.status('creating snappy hex mesh dictionary')
@@ -339,10 +341,10 @@ class Solver(object):
         windRose = wind_dict['caseTypes']["windRose"]
         template = read_dict_string(wind_dict, 'template')
         cell_size = windRose['blockMeshCellSize']
-        for i, (_weight, wind_dir) in enumerate(windRose['windDir']):
+        for i, (_weight, wind_dir, _z0, _TKE_us2, _us) in enumerate(windRose['windDir']):
             case_dir = os.path.join(wind_dict['runs'],
                                 '%(template)s_rose_%(wind_dir)s' % locals())
-            yield dict(case_dir = case_dir, wind_dir = wind_dir, cell_size = cell_size,
+            yield dict(case_dir = case_dir, i = i, wind_dir = wind_dir, cell_size = cell_size,
                     name='wind_rose %d: cell_size=%d, wind_dir=%d' % (i, cell_size, wind_dir))
 
     def run_directory(self, prefix):
@@ -387,6 +389,9 @@ class Solver(object):
 
     def writeMetMastLocations(self, case): # will replace the following 4 lines
         print 'TODO'
+
+    def calcHitRate(self, cases, pdf, wind_dict):
+        
 
     def plotContourMaps(self, cases, pdf, wind_dict):
         refinement_length = wind_dict['SHMParams']['domainSize']['refinement_length']
@@ -493,7 +498,8 @@ class Solver(object):
         self.sampleCases(cases, work, wind_dict)
 
         self._r.status('Ploting hit-rate')
-        # TODO
+        self.calcHitRate(cases, pdf, wind_dict)
+
         self._r.status('Ploting contour maps at specified heights')
         self.plotContourMaps(cases, pdf, wind_dict)
         # TODO
