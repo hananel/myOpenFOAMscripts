@@ -8,7 +8,7 @@ from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 
-from flask import Flask, jsonify, send_file
+from flask import Flask, jsonify, send_file, render_template
 
 from twisted_windpy import ProcessManager
 
@@ -38,20 +38,7 @@ app.debug = True
 
 @app.route('/')
 def hello():
-    return """<html>
-<head>
-    <title>WindPyFoam</title>
-</head>
-<body>
-<p>
-Welcome to windpyfoam!
-</p>
-<p>
-<a href="/launch">click to launch simulation</a>
-</p>
-</body>
-</html
-"""
+    return render_template('index.html')
 
 process_reader = """<html>
 <head>
@@ -109,12 +96,13 @@ def launch():
             # TODO - use template
             return process_reader
 
-def run():
+def run(port=8880):
+    print "running windpyfoam web server %s" % __version__
+    print "listening on port %s" % port
     root = WSGIResource(reactor, reactor.getThreadPool(), app)
     factory = Site(root)
-    reactor.listenTCP(8880, factory)
+    reactor.listenTCP(port, factory)
     reactor.run()
 
 if __name__ == '__main__':
-    print "running windpyfoam web server %s" % __version__
     run()
