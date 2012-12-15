@@ -23,6 +23,28 @@ from PyFoam.Execution.BasicRunner 		        import BasicRunner
 
 sys.path.append('../')
 from runCases import runCasesFiles as runCases
+from windrose import WindroseAxes
+
+from matplotlib import pyplot as plt
+import matplotlib.cm as cm
+from numpy.random import random
+from numpy import arange
+
+def hist_to_time(distribution, values, n=1000):
+    """
+    [10,8,6] [0.1,0.5,0.4]
+    [1,1,1,1..1,2,2,..2,3,3,..3]
+    10          8       6
+    """
+    if sum(distribution) != 1.0:
+        print "warning: hist_to_time input distribution doesn't sum to one, fixing locally"
+        D = sum(distribution)
+        distribution = [x/D for x in distribution]
+    plurality = [int(d * n) for d in distribution]
+    out_val = []
+    for val in values:
+        out_val.append(sum([[v]*p for p, v in zip(plurality, val)], []))
+    return out_val
 
 def read_dict_string(d, key):
     """
@@ -41,6 +63,19 @@ class Solver(object):
     def __init__(self, reporter, show_plots):
         self._r = reporter
         self._show_plots = show_plots
+        self._fig_n = 1
+
+    def initial_wind_rose_axes(self):
+        fig = self.newFigure(figsize=(8, 8), dpi=80, facecolor='w', edgecolor='w')
+        rect = [0.1, 0.1, 0.8, 0.8]
+        ax = WindroseAxes(fig, rect, axisbg='w')
+        fig.add_axes(ax)
+        return ax
+
+    def initial_wind_rose_legend(self, ax):
+        plt = self._r.plot
+        l = ax.legend(axespad=-0.10)
+        plt.setp(l.get_texts(), fontsize=8)
 
     def create_block_mesh_dict(self, work, wind_dict, params):
         phi = params['phi']
@@ -90,7 +125,8 @@ class Solver(object):
         zz = SHM["pointInDomain"]["zz"]
         x0, y0 = (SHM["centerOfDomain"]["x0"],
                 SHM["centerOfDomain"]["x0"])
-        z0 = wind_dict['simParams']['z0'] # TODO: calculated per wind direction using roughness2foam
+        i = params['i']
+        z0 = wind_dict["caseTypes"]["windRose"]["windDir"][i][2]
         # calculating refinement box positions
         l1, l2, h1, h2 = 2*a, 1.3*a, 4*H, 2*H # refinement rules - Martinez 2011
         sp = sin(phi)
@@ -217,15 +253,19 @@ class Solver(object):
         bmName = path.join(work.initialDir(),"include", "initialConditions")
         template = TemplateFile(bmName + ".template")
         template.writeToFile(bmName,{'TKE':TKE})
-        # 3: changing initial and boundary conditions for new z0
-        # changing ks in nut, inside nutRoughWallFunction
+        # 3: changing initial and boundary conditions for z0
+        # changing z0 in nut, inside nutkAtmRoughWallFunction - for rectanguleDomainSTL = 0 for both terrain and ground patches
         nutFile = ParsedParameterFile(path.join(work.initialDir(), "nut"))
-        nutFile["boundaryField"]["ground"]["z0"].setUniform(z0)
-        nutFile["boundaryField"]["terrain_.*"]["z0"].setUniform(z0)
+        if SHM["rectanguleDomainSTL"]:
+            nutFile["boundaryField"]["ground"]["z0"].setUniform(z0)
+            nutFile["boundaryField"]["terrain_.*"]["z0"].setUniform(z0)
+        else:
+            nutFile["boundaryField"]["ground"]["z0"].setUniform(SHM["ground_z0"])
+            nutFile["boundaryField"]["terrain_.*"]["z0"].setUniform(SHM["terrain_z0"])
         nutFile.writeFile()
         # 3: changing transport properties
         transportFile = ParsedParameterFile(path.join(work.constantDir(),'transportProperties'))
-        transportFile['nu'] = wind_dict['simParams']['nu']
+        transportFile['nu'] = "nu [0 2 -1 0 0 0 0] " + str(wind_dict['simParams']['nu'])
         transportFile.writeFile()
 
     def create_case(self, wind_dict, params):
@@ -256,7 +296,7 @@ class Solver(object):
         # creating dictionaries
         #--
         if wind_dict['procnr'] > multiprocessing.cpu_count():
-            warn('wind_dict contains a higher processor number then the machine has')
+            self._r.warn('wind_dict contains a higher processor number then the machine has')
             wind_dict['procnr'] = min(wind_dict['procnr'], multiprocessing.cpu_count())
         phi = params['wind_dir'] * pi / 180
         params['phi'] = phi # - pi/180 * 90
@@ -388,10 +428,15 @@ class Solver(object):
 
 
     def writeMetMastLocations(self, case): # will replace the following 4 lines
-        print 'TODO'
+        print 'TODO writeMetMastLocations'
 
     def calcHitRate(self, cases, pdf, wind_dict):
-        
+        print "TODO calcHitRate"
+
+    def newFigure(self, *args, **kw):
+        fig = plt.figure(self._fig_n, *args, **kw)
+        self._fig_n += 1
+        return fig
 
     def plotContourMaps(self, cases, pdf, wind_dict):
         refinement_length = wind_dict['SHMParams']['domainSize']['refinement_length']
@@ -400,15 +445,15 @@ class Solver(object):
         xmesh, ymesh = meshgrid(xi, yi)
         hs = wind_dict['sampleParams']['hSample']
         avgV = zeros((len(hs), len(xi), len(yi)))
-        fig_n = 1
         plt = self._r.plot
         for i, case in enumerate(cases):
+            print "DEBUG: %s" % (case)
             lastTime = genfromtxt(path.join(case.name,'PyFoamState.CurrentTime'))
             for hi, h in enumerate(hs):
                 data = genfromtxt(path.join(case.name,'surfaces/'+str(int(lastTime))+'/U_agl_'+str(h)+'.raw'))
                 # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
                 vi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), (data[:,3].ravel()**2+data[:,4].ravel()**2)**0.5, (xmesh,ymesh))
-                plt.figure(fig_n); fig_n += 1
+                self.newFigure()
                 plt.title(case.name+'\n at height '+str(h)+' meter agl')
                 CS = plt.contourf(xi, yi, vi, 400,cmap=plt.cm.jet,linewidths=0)
                 plt.colorbar(CS)
@@ -417,11 +462,21 @@ class Solver(object):
                 #import pdb; pdb.set_trace()
                 avgV[hi, :, :] += vi * wind_dict["caseTypes"]["windRose"]["windDir"][i][0]
         for hi, h in enumerate(hs):
-            plt.figure(fig_n); fig_n += 1
+            self.newFigure()
             plt.title('average wind velocity at height ' + str(h) + ' meter agl')
             CS = plt.contourf(xi, yi, avgV[hi, :, :], 400, cmap=plt.cm.jet, linewidths=0)
             plt.colorbar(CS)
             pdf.savefig()
+
+    def plot_initial_wind_rose(self, wind_dict, params):
+        #windrose like a stacked histogram with normed (displayed in percent) results
+        ax = self.initial_wind_rose_axes()
+        weight = [x[0] for x in wind_dict['caseTypes']['windRose']['windDir'][:]]
+        wd = [x[1] for x in wind_dict['caseTypes']['windRose']['windDir'][:]]
+        ws = [x[-1] for x in wind_dict['caseTypes']['windRose']['windDir'][:]]
+        (wd, ws) = hist_to_time(weight, (wd, ws))
+        ax.bar(wd, ws, normed=True, opening=0.8, edgecolor='white')
+        self.initial_wind_rose_legend(ax)
 
     def run_windpyfoam(self, dict):
         """
@@ -467,7 +522,7 @@ class Solver(object):
         # starting the pdf file for accumilating graphical results
         pdf = PdfPages('results.pdf')
 
-        # running the grid convergence routine - for 1 specific direction
+        # preparing the grid, bc and ic for all cases
         gen = []
         if wind_dict["caseTypes"]["gridConvergence"]:
             gen = self.grid_convergance_params_generator(wind_dict)
@@ -475,16 +530,24 @@ class Solver(object):
                 self.wind_rose_params_generator(wind_dict))
         cases = []
         names = []
+
         for params in gen:
             self._r.debug(params['name'])
             work = self.create_case(wind_dict, params)
             names.append('wind%s' % int(180 / pi * params['phi']))
             cases.append(work)
-        # TODO: customizable runArg
+
+        # plotting initial wind rose
+        pdf2 = PdfPages('initialWindRose.pdf')
+        self.plot_initial_wind_rose(wind_dict, params)
+        pdf2.savefig()
+        pdf2.close()
+        os.system('xdg-open initialWindRose.pdf')
+
         self._r.status('RUNNING CASES')
         runArg = read_dict_string(wind_dict, 'runArg')
         self._r.status(runArg)
-        assert(runArg in ['runner', 'plotRunner', 'sfoam'])
+        assert(runArg in ['Runner', 'plotRunner', 'sfoam'])
         runCases(names=names,
                  n=wind_dict['procnr'], runArg=runArg,
                  cases=[case.name for case in cases])
@@ -514,3 +577,27 @@ class Solver(object):
 def run_windpyfoam(reporter, dict, no_plots):
     solver = Solver(reporter, show_plots=not no_plots)
     solver.run_windpyfoam(dict)
+
+## Tests
+
+def test_plot_initial_wind_rose():
+    stdio = __import__('stdio')
+    winddict = ParsedParameterFile('windPyFoamDict')
+    solver = Solver(stdio, True)
+    solver.plot_initial_wind_rose(winddict, {})
+    stdio.plot.show()
+
+def test_plot_contour_maps():
+    pdf = PdfPages('test_contour.pdf')
+    stdio = __import__('stdio')
+    wind_dict = ParsedParameterFile('windPyFoamDict')
+    solver = Solver(stdio, True)
+    class FakeCase(object):
+        def __init__(self, name):
+            self.name = name
+    cases = [FakeCase(name='runs_20121215_122648/test_template_rose_270/')]
+    solver.plotContourMaps(cases, pdf, wind_dict)
+    stdio.plot.show()
+
+if __name__ == '__main__':
+    test_plot_contour_maps()
