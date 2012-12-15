@@ -405,21 +405,55 @@ class Solver(object):
         for case in cases:
             Runner(args=["reconstructPar" ,"-latestTime", "-case" ,case])
 
-    def sampleCases(self, cases, work, wind_dict):
+    def sampleDictionaries(self, cases, work, wind_dict):
         # TODO - at the moment for 90 degrees phi only and in line instead of in a function
         for case in cases:
             self._r.status('preparing Sample file for case '+case.name)
             sampleFile = ParsedParameterFile(path.join(case.systemDir(), "sampleDict"))
-            self.writeMetMastLocations(case) # will replace the following 4 lines
-            sampleFile['sets'][1]['start'] = "("+str(-wind_dict['SHMParams']['domainSize']['fXup']*0.99)+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['z_min'])+")"
-            sampleFile['sets'][1]['end'] = "("+str(-wind_dict['SHMParams']['domainSize']['fXup']*0.99)+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['z_min']+50)+")"
-            sampleFile['sets'][3]['start'] = "("+str(wind_dict['SHMParams']['centerOfDomain']['x0'])+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['typical_height'])+")"
-            sampleFile['sets'][3]['end'] = "("+str(wind_dict['SHMParams']['centerOfDomain']['x0'])+" "+str(0)+" "+str(wind_dict['SHMParams']['domainSize']['typical_height']+50)+")"
+            del sampleFile.content['sets'][:]
+            if len(wind_dict["Measurements"]) > 0:
+                self._r.status("creating sample locations for measurements")
+                for metMast in wind_dict["Measurements"]:
+                    self._r.status("adding met mast " + metMast)
+                    # creating sub directory entry
+                    sampleFile.content['sets'].append(metMast)
+                    # creating another fictional sub directory entry - so that i can run it over in a second
+                    sampleFile.content['sets'].append([metMast])
+                    sampleFile['sets'][len(sampleFile['sets'])-1] = \
+                    {'type':'uniform', 'axis':'z',\
+                    'start':'('+str(wind_dict["Measurements"][metMast]["x"])+" "\
+                               +str(wind_dict["Measurements"][metMast]["y"])+" "\
+                               +str(wind_dict["Measurements"][metMast]["gl"])+")",\
+                    'end':  '('+str(wind_dict["Measurements"][metMast]["x"])+" "\
+                               +str(wind_dict["Measurements"][metMast]["y"])+" "\
+                               +str(wind_dict["Measurements"][metMast]["gl"]+\
+                                    wind_dict["Measurements"][metMast]["h"])+")",\
+                    'nPoints':wind_dict['sampleParams']['nPoints']}
+            if len(wind_dict['sampleParams']['metMasts'])>0:
+               self._r.status("creating sample locations for sampleParams")
+               for metMast in wind_dict['sampleParams']['metMasts']:
+                    # creating sub directory entry
+                    sampleFile.content['sets'].append(metMast)
+                    # creating another fictional sub directory entry - so that i can run it over in a second
+                    sampleFile.content['sets'].append([metMast])
+                    sampleFile['sets'][len(sampleFile['sets'])-1] = \
+                    {'type':'uniform', 'axis':'z',\
+                    'start':'('+str(wind_dict["sampleParams"]["metMasts"][metMast]["x"])+" "\
+                               +str(wind_dict["sampleParams"]["metMasts"][metMast]["y"])+" "\
+                               +str(wind_dict["sampleParams"]["metMasts"][metMast]["gl"])+")",\
+                    'end':  '('+str(wind_dict["sampleParams"]["metMasts"][metMast]["x"])+" "\
+                               +str(wind_dict["sampleParams"]["metMasts"][metMast]["y"])+" "\
+                               +str(wind_dict["sampleParams"]["metMasts"][metMast]["gl"]+\
+                                    wind_dict["sampleParams"]["metMasts"][metMast]["h"])+")",\
+                    'nPoints':wind_dict['sampleParams']['nPoints']}
+
             del sampleFile.content['surfaces'][:]
             for i,h in enumerate(wind_dict['sampleParams']['hSample']):
                 self._r.status('preparing sampling surface at '+str(h)+' meters agl')
                 translateSTL.stl_shift_z_filenames(path.join(case.name,'constant/triSurface/terrain.stl'), path.join(case.name,'constant/triSurface/terrain_agl_'+str(h)+'.stl'), h)
+                # creating sub directory entry
                 sampleFile.content['surfaces'].append('agl_'+str(h))
+                # creating another fictional sub directory entry - so that i can run it over in a second
                 sampleFile.content['surfaces'].append(['agl_'+str(h)])
                 sampleFile['surfaces'][len(sampleFile['surfaces'])-1]={'type':'sampledTriSurfaceMesh','surface':'terrain_agl_'+str(h)+'.stl','source':'cells'}
             sampleFile.writeFile()
@@ -439,6 +473,8 @@ class Solver(object):
         return fig
 
     def save_svg(self, fig_name, f):
+        if self._plots != 'svg':
+            return
         filename = fig_name + '.svg'
         f.savefig(filename)
         self._r.status('PLOT %s' % filename)
@@ -483,7 +519,8 @@ class Solver(object):
         (wd, ws) = hist_to_time(weight, (wd, ws))
         ax.bar(wd, ws, normed=True, opening=0.8, edgecolor='white')
         self.initial_wind_rose_legend(ax)
-        self.save_svg('initial_wind_rose_axes', ax.figure)
+        # TODO: add save_svg to windrose
+        #self.save_svg('initial_wind_rose_axes', ax.figure)
 
     def run_windpyfoam(self, dict):
         """
@@ -563,9 +600,8 @@ class Solver(object):
         self._r.status('Reconstructing cases')
         self.reconstructCases([case.name for case in cases])
 
-        # TODO  1. build sampleDict according to wind_dict measurement info
-        #       2. run sample utility
-        self.sampleCases(cases, work, wind_dict)
+        self._r.status('Building sample dictionaries')
+        self.sampleDictionaries(cases, work, wind_dict)
 
         self._r.status('Ploting hit-rate')
         self.calcHitRate(cases, pdf, wind_dict)
@@ -598,7 +634,7 @@ def test_plot_contour_maps():
     pdf = PdfPages('test_contour.pdf')
     stdio = __import__('stdio')
     wind_dict = ParsedParameterFile('windPyFoamDict')
-    solver = Solver(stdio, True)
+    solver = Solver(stdio, plots='svg')
     class FakeCase(object):
         def __init__(self, name):
             self.name = name
