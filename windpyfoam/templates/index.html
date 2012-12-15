@@ -18,7 +18,6 @@ function launch() {
 }
 
 function keydown(event) {
-    //$("#status").append("keydown" + event.which);
     if (event.which == 27) {
         updates_enabled = false;
     }
@@ -75,6 +74,9 @@ $(document).ready(function () {
     </div>
 </div>
 <div id="status">
+</div>
+<div id="help">
+press escape to stop updates.
 </div>
 </body>
 </html
