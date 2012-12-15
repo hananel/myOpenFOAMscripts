@@ -72,6 +72,6 @@ from solvers import run_windpyfoam
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--dict', required=True)
-    parser.add_argument('--no-plots', default=False, action='store_true')
+    parser.add_argument('--plots', default='gui', choices=['gui', 'svg'])
     args = parser.parse_args(sys.argv[1:])
-    run_windpyfoam(stdio, args.dict, args.no_plots)
+    run_windpyfoam(stdio, args.dict, args.plots)

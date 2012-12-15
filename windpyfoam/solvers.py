@@ -60,9 +60,9 @@ def read_dict_string(d, key):
     return val
 
 class Solver(object):
-    def __init__(self, reporter, show_plots):
+    def __init__(self, reporter, plots):
         self._r = reporter
-        self._show_plots = show_plots
+        self._plots = plots
         self._fig_n = 1
 
     def initial_wind_rose_axes(self):
@@ -438,6 +438,11 @@ class Solver(object):
         self._fig_n += 1
         return fig
 
+    def save_svg(self, fig_name, f):
+        filename = fig_name + '.svg'
+        f.savefig(filename)
+        self._r.status('PLOT %s' % filename)
+
     def plotContourMaps(self, cases, pdf, wind_dict):
         refinement_length = wind_dict['SHMParams']['domainSize']['refinement_length']
         xi = linspace(-refinement_length,refinement_length,wind_dict['sampleParams']['Nx'])
@@ -447,26 +452,27 @@ class Solver(object):
         avgV = zeros((len(hs), len(xi), len(yi)))
         plt = self._r.plot
         for i, case in enumerate(cases):
-            print "DEBUG: %s" % (case)
             lastTime = genfromtxt(path.join(case.name,'PyFoamState.CurrentTime'))
             for hi, h in enumerate(hs):
                 data = genfromtxt(path.join(case.name,'surfaces/'+str(int(lastTime))+'/U_agl_'+str(h)+'.raw'))
                 # after a long trial and error - matplotlib griddata is shaky and crashes on some grids. scipy.interpolate works on every grid i tested so far
                 vi = sc.griddata((data[:,0].ravel(),data[:,1].ravel()), (data[:,3].ravel()**2+data[:,4].ravel()**2)**0.5, (xmesh,ymesh))
-                self.newFigure()
+                ax = self.newFigure()
                 plt.title(case.name+'\n at height '+str(h)+' meter agl')
                 CS = plt.contourf(xi, yi, vi, 400,cmap=plt.cm.jet,linewidths=0)
                 plt.colorbar(CS)
                 pdf.savefig()
+                self.save_svg(os.path.join(case.name, 'contour'), ax.figure)
                 # assuming the windDir weights are normalized
                 #import pdb; pdb.set_trace()
                 avgV[hi, :, :] += vi * wind_dict["caseTypes"]["windRose"]["windDir"][i][0]
         for hi, h in enumerate(hs):
-            self.newFigure()
+            ax = self.newFigure()
             plt.title('average wind velocity at height ' + str(h) + ' meter agl')
             CS = plt.contourf(xi, yi, avgV[hi, :, :], 400, cmap=plt.cm.jet, linewidths=0)
             plt.colorbar(CS)
             pdf.savefig()
+            self.save_svg('average_wind_velocity_h_%s' % str(h), ax.figure)
 
     def plot_initial_wind_rose(self, wind_dict, params):
         #windrose like a stacked histogram with normed (displayed in percent) results
@@ -477,6 +483,7 @@ class Solver(object):
         (wd, ws) = hist_to_time(weight, (wd, ws))
         ax.bar(wd, ws, normed=True, opening=0.8, edgecolor='white')
         self.initial_wind_rose_legend(ax)
+        self.save_svg('initial_wind_rose_axes', ax.figure)
 
     def run_windpyfoam(self, dict):
         """
@@ -570,12 +577,12 @@ class Solver(object):
         # TODO
         pdf.close()
         self._r.status('results.pdf')
-        if self._show_plots:
+        if self._plots == 'gui':
             self._r.plot.show()
         self._r.status('exiting')
 
-def run_windpyfoam(reporter, dict, no_plots):
-    solver = Solver(reporter, show_plots=not no_plots)
+def run_windpyfoam(reporter, dict, plots):
+    solver = Solver(reporter, plots=plots)
     solver.run_windpyfoam(dict)
 
 ## Tests

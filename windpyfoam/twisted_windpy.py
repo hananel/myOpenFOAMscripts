@@ -16,9 +16,11 @@ class WindPyProcessProtocol(protocol.ProcessProtocol):
 
     def childDataReceived(self, fd, data):
         # TODO structured communication
+        print "DEBUG: %s" % repr(data)
         self._process_manager.on_data(self._i, fd, data)
 
     def processEnded(self, status):
+        self._process_manager.on_data(self._i, None, "PROCESS ENDED");
         self._process_manager.on_process_ended(self._i, status)
 
 class ProcessManager(object):
@@ -27,6 +29,7 @@ class ProcessManager(object):
         self._processes = []
         self._verbose = False
         self._pending_status = []
+        self._during_traceback = False
 
     def on_data(self, i, fd, data):
         """
@@ -47,10 +50,15 @@ class ProcessManager(object):
         # TODO: send to web client not via polling
         # TODO: race here, if process disappears before status is read, i will
         # be invalidated, or worse point to the wrong process.
-        if line.startswith('STATUS: '):
+        if self._during_traceback:
+            self._pending_status.append((i, 'error', line))
+        elif line.startswith('STATUS: '):
             status = line[len('STATUS: '):]
             print "STATUS: (%d) %s" % (len(self._pending_status), status)
-            self._pending_status.append((i, status))
+            self._pending_status.append((i, 'status', status))
+        elif line.startswith('Traceback'):
+            self._pending_status.append((i, 'error', line))
+            self._during_traceback = True
 
     def process_count(self):
         return len(self._processes)
@@ -75,7 +83,7 @@ class ProcessManager(object):
             env['DISPLAY'] = ':0.0'
         self._processes[i] = reactor.spawnProcess(process_protocol, '/usr/bin/python',
                 ['/usr/bin/python', 'windpyfoam.py', '--dict', dict_filename,
-                 '--no-plots'],
+                 '--plots=svg'],
                 env=env)
         self._processes[i].start_pid = self._processes[i].pid
         return True

@@ -10,6 +10,10 @@ from twisted.web.wsgi import WSGIResource
 
 from flask import Flask, jsonify, send_file, render_template
 
+# configure matplotlib, our plotting backend, to use Agg
+import matplotlib
+matplotlib.use('Agg')
+
 from twisted_windpy import ProcessManager
 
 class Web(object):
@@ -40,33 +44,6 @@ app.debug = True
 def hello():
     return render_template('index.html')
 
-process_reader = """<html>
-<head>
-<title>process viewer</title>
-<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-<script>
-function startUpdateStatus() {
-    $.getJSON("/status", {}, function(json) {
-        $("#status").append(JSON.stringify(json));
-        //var data = JSON.parse(json, function(k, v) {
-        //    $("#status").append("<div>" + k + " " + v + "</div>");
-        //});
-    });
-    setTimeout(startUpdateStatus, 1000);
-}
-$(document).ready(function () {
-    $("#status").append("started");
-    startUpdateStatus();
-})
-</script>
-</head>
-<body>
-<div id="status">
-</div>
-</body>
-</html>
-"""
-
 @app.route('/status')
 def status():
     """ return json """
@@ -94,7 +71,7 @@ def launch():
         else:
             # TODO - for specific process
             # TODO - use template
-            return process_reader
+            return 'success'
 
 def run(port=8880):
     print "running windpyfoam web server %s" % __version__
