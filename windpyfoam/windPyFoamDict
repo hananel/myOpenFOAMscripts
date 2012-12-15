@@ -20,9 +20,9 @@ FoamFile
 // Wind Py Foam specific parameters.
 
 template "test_template";
-runArg  "sfoam";
-procnr 20;
-procnrSnappy 10;
+runArg  "Runner";
+procnr 1;
+procnrSnappy 1;
 
 caseTypes
 {
@@ -34,7 +34,7 @@ caseTypes
     }
     windRose
     {
-        blockMeshCellSize 15;
+        blockMeshCellSize 60;
         /* Inlet profile, direction and freaquency of occurance */
         /* weight [0, 1.0], direction [0, 360.0], z0 [m [0,100]], TKE/us^2 [0,100], us [m/s [0,100]]*/
         windDir (
@@ -49,47 +49,50 @@ caseTypes
 // general simulation parameters
 simParams
 {
-   	nu			1.4076485;   // [m^2/s]
-   	caseType	SHM;
+    nu          1.4076485e-5;   // [m^2/s]
+    caseType    SHM;
 };
 
 SHMParams
 {
     rectanguleDomainSTL 0;
+    // for such cases - 2 z0 params can be given, one for terrain, and one for gound (area surrounding terrain which is the middle of the domain)
+    terrain_z0      0.015; // [m]
+    ground_z0       0.0003; // [m]
 
     cellSize
-	{
-		fLayerRatio 4; //notice if the test_template uses relative values or not
-		levelRef	2;
-		layers		12;
-		r			1.2;
-		zp_z0		20; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
-	}
-	domainSize
-	{
-		refinement_length 80; [m]
-        typical_height 12; [m]
-		fXup		200; // upwind fetch [m]
-		fXdown		800; // downwind fetch [m]
-		fY		    660; // dom_y = fX * a [m]
-		domZ	    120; // = Href [m]
+    {
+        fLayerRatio 4; //notice if the test_template uses relative values or not
+        levelRef    1;
+        layers      12;
+        r           1.2;
+        zp_z0       20; //ratio between middle of first cell from the ground to the roughness length - 13.5 is Martinez value for Askervein
+    }
+    domainSize
+    {
+        refinement_length 80; // [m]
+        typical_height 12; // [m]
+        fXup        200; // upwind fetch [m]
+        fXdown      800; // downwind fetch [m]
+        fY          660; // dom_y = fX * a [m]
+        domZ        120; // = Href [m]
         z_min       0.75;// [m]
-	}
-	pointInDomain
-	{
-		zz		111;
-	}
-	centerOfDomain
-	{
-		x0		0;
-		y0		0;
-	}
+    }
+    pointInDomain
+    {
+        zz        111;
+    }
+    centerOfDomain
+    {
+        x0        0;
+        y0        0;
+    }
 };
 
 kEpsParams
 {
-	Cmu		0.03;	// castro 96 - redundent for windRose
-	k		0.4;
+    Cmu      0.03;    // castro 96 - redundent for windRose
+    k        0.4;
 };
 
 Measurments
@@ -166,7 +169,7 @@ Measurments
 }
 sampleParams
 {
-	hSample	(10 50);
+    hSample    (10 50);
     Nx 100;
 };
 
